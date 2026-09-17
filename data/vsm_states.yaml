@@ -1,0 +1,191 @@
+manual_version: V3.6
+source_pdf: /Users/rrxie/Downloads/Software User Manual (V3_6) For Inverter.pdf
+pages:
+- 31
+- 32
+- 33
+- 34
+- 35
+- 36
+- 38
+- 39
+symbol: VSM_State
+description: Internal vehicle state machine tracked at startup, shutdown, and operational transitions. Monitored via the VSM_State
+  symbol in RMS GUI Memory View.
+states:
+- id: 0
+  name: Start State
+  description: Default state at vehicle power-up.
+  can_description: Power-up init and self-test; identical in CAN mode.
+  notes:
+    entry: Vehicle powered up; default state unless program enable input is held low at power-up.
+    exit: Proceeds through initialization, EEPROM load, and POST.
+    substeps:
+    - '12V Power-up: processor and I/O initialization; default parameter list created.'
+    - 'Load from EEPROM: application parameters and factory calibrations loaded.'
+    - 'Power on Self-Test (POST): hardware/sensor validation; each test has an associated fault flag.'
+  related_lockouts:
+  - Program enable input held low at power-up prevents entering the Vehicle State Machine.
+- id: 1
+  name: Pre-charge sequence initial state
+  description: Turn on the pre-charge relay.
+  can_description: Turn on the pre-charge relay; identical in CAN mode.
+  notes:
+    entry: Pre-charge Initialization (VSM_State = 1).
+    exit: If DC voltage below software over-voltage threshold, pre-charge output activated and transition to state 2.
+    conditions:
+    - Declares VDC Out-of-range high fault if DC voltage is above the software over-voltage threshold (not user-adjustable).
+  related_lockouts: []
+- id: 2
+  name: Pre-charge sequence active state
+  description: Waiting for capacitor to finish charging.
+  can_description: Waiting for capacitor to finish charging; identical in CAN mode.
+  notes:
+    entry: Pre-charge Active (VSM_State = 2).
+    exit: If charge rate stays within range, Main output activated and Pre-charge output deactivated.
+    conditions:
+    - Declares VDC Out-of-range high fault if DC voltage exceeds software over-voltage threshold.
+    - 'After 3 s max pre-charge time: VDC Out-of-range low fault if below DC Under-voltage threshold EEPROM; pre-charge timeout
+      fault if still charging.'
+  related_lockouts: []
+- id: 3
+  name: Pre-charge sequence finish state
+  description: Completes final checks before proceeding to Wait State.
+  can_description: Final checks done; next the inverter waits for CAN commands.
+  notes:
+    entry: Pre-charge Complete (VSM_State = 3).
+    exit: Proceeds to Wait State if capacitor charge is stable.
+    conditions:
+    - Declares relevant fault if over/under-charged or voltage changes quickly after pre-charge output deactivation.
+  related_lockouts: []
+- id: 4
+  name: Wait State
+  description: Waiting for activation of forward or reverse.
+  can_description: Waiting for CAN commands. Send Disable (0x0C0) to clear lockout,
+    then Enable with direction and torque inside the CAN timeout window.
+  can_entry: Pre-charge complete. Enable lockout is set; inverter waits for the 0x0C0
+    Disable-then-Enable sequence, not for pedals or key switch.
+  can_exit: Enable with direction and torque accepted inside the timeout window moves
+    toward Ready (5). A direction flip while enabled re-disables and re-arms lockout.
+  notes:
+    entry: Checks Key Switch Mode (EEPROM Key_Switch_Mode_EEPROM).
+    exit: Transitions when brake/direction/start conditions satisfied.
+    key_switch_mode_0:
+    - 'Simple on/off ignition: brake active and exactly one of /FORWARD or /REVERSE active.'
+    - Both /FORWARD and /REVERSE active declares FWD_RVS_INVALID_STATE_FAULT.
+    key_switch_mode_1:
+    - 'Traditional ignition: brake active, start signal pulse received, one direction active while brakes held.'
+    - Both /FORWARD and /REVERSE active declares FWD_RVS_INVALID_STATE_FAULT.
+  related_lockouts:
+  - FWD_RVS_INVALID_STATE_FAULT when both forward and reverse switches active.
+  - Precharge_Bypassed_EEPROM = 1 skips pre-charge and goes directly to Wait State at power-up.
+- id: 5
+  name: Ready State
+  description: Activates the inverter state machine to begin energizing the motor.
+  can_description: CAN Enable accepted; inverter start sequence running, waiting for
+    the Inverter Ready flag.
+  can_entry: 0x0C0 Enable accepted with lockout cleared and no faults.
+  can_exit: Inverter Ready flag moves toward Running (6); enable timeout raises a fault.
+  notes:
+    entry: Sends Enable Inverter Command; waits for Inverter Ready Flag.
+    exit: Auto-transitions if no faults and inverter enables within timeout.
+    conditions:
+    - Declares inverter state timeout fault if inverter does not enable within allowed time (2 minutes per Appendix N).
+  related_lockouts: []
+- id: 6
+  name: Motor Running State
+  description: Normal motor running operation.
+  can_description: Running on CAN torque or speed commands (0x0C0).
+  notes:
+    entry: Normal running after Ready State.
+    exit: Fault, shutdown, or mode transition.
+    conditions:
+    - Drive may switch between torque and speed command mode within operating envelope.
+  related_lockouts: []
+- id: 7
+  name: Fault State
+  description: The controller has faulted.
+  can_description: Faulted. See the Faults tab; clear with Clear Faults (CAN parameter
+    20 or RS232 wm0002=0000). Latching and EEPROM-update rules still apply.
+  notes:
+    entry: Fault during POST or while running.
+    exit: Fault cleared via Clear Faults Command (GUI or CAN); some faults require power recycle.
+    conditions:
+    - Fault indicator blinks one fault at a time; POST faults have higher priority than RUN faults.
+    - POST faults followed by two quick blinks to distinguish from RUN faults.
+  related_lockouts:
+  - Hardware Gate/Desaturation Fault (POST and RUN) cannot be cleared via Clear Fault Command; requires power recycle.
+  - EEPROM Update Required (POST warning) not cleared by Clear Faults Command.
+- id: 14
+  name: Shutdown in Process
+  description: Inverter shutdown in process.
+  can_description: Shutdown in process. Key-switch mode 1 concept; unexpected in CAN
+    mode.
+  notes:
+    entry: 'Key switch mode 1: user turned key switch off (ignition input held low).'
+    exit: null
+  related_lockouts: []
+- id: 15
+  name: Recycle Power State
+  description: Power must be recycled after EEPROM programming.
+  can_description: EEPROM programmed; recycle power for values to take effect. Identical
+    in CAN mode.
+  notes:
+    entry: EEPROM programming successfully completed.
+    exit: Controller must be re-powered for new EEPROM values to take effect.
+  related_lockouts: []
+state_id_gaps: States 8–13 are not defined in this manual.
+inverter_states:
+  symbol: Inverter_Mode
+  pages:
+  - 36
+  - 72
+  description: Inverter internal states (inv_mode) referenced in Ready State and GUI Display Parameters.
+  states:
+  - id: 0
+    name: Precharge, power-up state
+  - id: 1
+    name: Stop
+    description: Inverter not running; STOP state.
+  - id: 2
+    name: Open Loop State
+    description: For testing purposes.
+  - id: 3
+    name: Closed Loop state
+    description: Normal state.
+  - id: 4
+    name: Start Time Delay
+    description: Small delay before starting the inverter.
+  - id: 5
+    name: Current Sensor Test
+    description: Flux ramp and flux regulators enabled.
+  - id: 6
+    name: Closed Loop Torque
+    description: Torque regulator enabled.
+  - id: 7
+    name: Torque Ramp
+    description: Start torque ramp.
+  - id: 8
+    name: Idle Run
+    description: Inverter running normally.
+  - id: 9
+    name: Idle Stop
+    description: Inverter stopped.
+  - id: 10
+    name: Ramp Off Torque
+    description: Ramps down torque command.
+  - id: 11
+    name: Ramp Off Flux
+    description: Ramps down flux command.
+  - id: 12
+    name: All Ramps Off
+    description: Shutoff inverter.
+  - id: 15
+    name: Default – Stop state
+  state_id_gaps: States 13 and 14 are not defined in this manual.
+diagram_notes:
+- 'Document describes linear startup: Start (0) → Pre-charge (1→2→3) → Wait (4) → Ready (5) → Motor Running (6).'
+- Fault State (7) entered from POST or run-time faults.
+- Shutdown in Process (14) and Recycle Power (15) are terminal/administrative states.
+- Manual references section 11 for VSM_State and section 11.4 for Inverter_Mode; those sections are not present in revision
+  3.6.

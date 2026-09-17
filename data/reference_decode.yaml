@@ -1,0 +1,536 @@
+# PM100 / PM100DX reference decode tables extracted from team + vendor sources.
+# Primary CAN source: RMS-Software 20210505 PM and RM CAN DB.dbc
+# Do NOT treat mur-embedded Cascadia_PM100DZ.dbc as authoritative (see conflicts).
+
+schema_version: 1
+updated: "2026-09-16"
+
+sources:
+  - id: rms_pm_dbc_20210505
+    path: "RMS-Software/Tools/CAN Tools/PM and RM series DBC files/20210505 RMS PM and RM CAN DB.dbc"
+    url: "https://github.com/RensselaerMotorsport/RMS-Software/blob/main/Tools/CAN%20Tools/PM%20and%20RM%20series%20DBC%20files/20210505%20RMS%20PM%20and%20RM%20CAN%20DB.dbc"
+    role: primary_11bit_can
+  - id: rms_gen5_dbc_20240129
+    path: "RMS-Software/Tools/CAN Tools/CM and Gen5 control card DBC files/20240129 Gen5 CAN DB.dbc"
+    url: "https://github.com/RensselaerMotorsport/RMS-Software/blob/main/Tools/CAN%20Tools/CM%20and%20Gen5%20control%20card%20DBC%20files/20240129%20Gen5%20CAN%20DB.dbc"
+    role: newer_m170_signals
+  - id: pm100dx_main
+    path: "PM100DX_Dashboard/main.py"
+    url: "https://github.com/RensselaerMotorsport/PM100DX_Dashboard/blob/main/main.py"
+    role: serial_log_column_scaling
+  - id: rms_defsyms_g3
+    path: data/vendor/defsyms_20221118_G3.txt
+    catalog: data/defsyms.yaml
+    sha256: 3a41ea3e723ce2d42c75dc7ff0e4ee3d3fc695d3c00b1ae67ae72e2a680766c0
+    identical_to:
+      - defsyms_20220617_G3.txt
+    role: rms_gui_parameter_addresses
+    notes: "6th column is GUI group/page, not an EEPROM default. Addresses are Memory View protocol, not SCI broadcast."
+  - id: mur_cascadia_reconstructed
+    path: "mur-embedded/protocol/dbc/vendor/Cascadia_PM100DZ.dbc"
+    role: local_reconstruction_do_not_trust
+  - id: software_user_manual_v36
+    path: "/Users/rrxie/Downloads/Software User Manual (V3_6) For Inverter.pdf"
+    catalog:
+      vsm: data/vsm_states.yaml
+      faults: data/faults.yaml
+    role: vsm_descriptions_and_fault_bit_map
+
+# EEPROM CAN configuration (RMS GUI parameter space — affects on-bus IDs)
+# gui_group 8 in defsyms is the CAN page, not a numeric default for CAN_ID_Offset.
+# Captured EEPROM 0x011D on this inverter is 0x00A0; the monitor defaults --id-offset to that.
+eeprom_can_config:
+  - { name: CAN_ID_Offset_EEPROM, address: 0x011D, type: uint, display: hex, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_Extended_Msg_ID_EEPROM, address: 0x0131, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_J1939_Option_Active_EEPROM, address: 0x0132, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_OBD2_Enable_EEPROM, address: 0x0152, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_BMS_Limit_Enable_EEPROM, address: 0x017F, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_Term_Res_Present_EEPROM, address: 0x011E, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_Command_Message_Active_EEPROM, address: 0x011F, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_Bit_Rate_EEPROM_kbps, address: 0x0120, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_ACTIVE_MSGS_EEPROM_Lo_Word, address: 0x0129, type: uint, display: hex, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_ACTIVE_MSGS_EEPROM_Hi_Word, address: 0x012A, type: uint, display: hex, gui_group: 8, source: rms_defsyms_g3, notes: "Set hi word to 0xFFFE to enable M176; 0xFFFF disables" }
+  - { name: CAN_Fast_Msg_Rate_EEPROM_ms, address: 0x0180, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_Slow_Msg_Rate_EEPROM_ms, address: 0x0181, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: CAN_Diag_Data_Tx_Active_EEPROM, address: 0x0160, type: uint, gui_group: 8, source: rms_defsyms_g3 }
+  - { name: Inv_Cmd_Mode_EEPROM, address: 0x011B, type: uint, gui_group: 1, source: rms_defsyms_g3, notes: "0=CAN, 1=VSM" }
+
+# Standard 11-bit CAN IDs (before EEPROM offset). Hex IDs = decimal BO_ numbers in DBC.
+can_messages:
+  - id: 0x0A0
+    decimal: 160
+    name: M160_Temperature_Set_1
+    cycle_ms: 100
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Module_A, start: 0, len: 16, endian: little, signed: true, factor: 0.1, unit: degC }
+      - { name: D2_Module_B, start: 16, len: 16, endian: little, signed: true, factor: 0.1, unit: degC }
+      - { name: D3_Module_C, start: 32, len: 16, endian: little, signed: true, factor: 0.1, unit: degC }
+      - { name: D4_Gate_Driver_Board, start: 48, len: 16, endian: little, signed: true, factor: 0.1, unit: degC }
+
+  - id: 0x0A1
+    decimal: 161
+    name: M161_Temperature_Set_2
+    cycle_ms: 100
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Control_Board_Temperature, start: 0, len: 16, signed: true, factor: 0.1, unit: degC }
+      - { name: D2_RTD1_Temperature, start: 16, len: 16, signed: true, factor: 0.1, unit: degC }
+      - { name: D3_RTD2_Temperature, start: 32, len: 16, signed: true, factor: 0.1, unit: degC }
+      - { name: D4_RTD3_Temperature, start: 48, len: 16, signed: true, factor: 0.1, unit: degC }
+
+  - id: 0x0A2
+    decimal: 162
+    name: M162_Temperature_Set_3
+    cycle_ms: 100
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_RTD4_Temperature, start: 0, len: 16, signed: true, factor: 0.1, unit: degC }
+      - { name: D2_RTD5_Temperature, start: 16, len: 16, signed: true, factor: 0.1, unit: degC }
+      - { name: D3_Motor_Temperature, start: 32, len: 16, signed: true, factor: 0.1, unit: degC }
+      - { name: D4_Torque_Shudder, start: 48, len: 16, signed: true, factor: 0.1, unit: Nm }
+
+  - id: 0x0A3
+    decimal: 163
+    name: M163_Analog_Input_Voltages
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Analog_Input_1, start: 0, len: 10, signed: false, factor: 0.01, unit: V }
+      - { name: D2_Analog_Input_2, start: 10, len: 10, signed: false, factor: 0.01, unit: V }
+      - { name: D3_Analog_Input_3, start: 20, len: 10, signed: false, factor: 0.01, unit: V }
+      - { name: D4_Analog_Input_4, start: 32, len: 10, signed: false, factor: 0.01, unit: V }
+      - { name: D5_Analog_Input_5, start: 42, len: 10, signed: false, factor: 0.01, unit: V }
+      - { name: D6_Analog_Input_6, start: 52, len: 10, signed: false, factor: 0.01, unit: V }
+
+  - id: 0x0A4
+    decimal: 164
+    name: M164_Digital_Input_Status
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Digital_Input_1, start: 0, len: 1, type: bool }
+      - { name: D2_Digital_Input_2, start: 8, len: 1, type: bool }
+      - { name: D3_Digital_Input_3, start: 16, len: 1, type: bool }
+      - { name: D4_Digital_Input_4, start: 24, len: 1, type: bool }
+      - { name: D5_Digital_Input_5, start: 32, len: 1, type: bool }
+      - { name: D6_Digital_Input_6, start: 40, len: 1, type: bool }
+      - { name: D7_Digital_Input_7, start: 48, len: 1, type: bool }
+      - { name: D8_Digital_Input_8, start: 56, len: 1, type: bool }
+
+  - id: 0x0A5
+    decimal: 165
+    name: M165_Motor_Position_Info
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Motor_Angle_Electrical, start: 0, len: 16, signed: false, factor: 0.1, unit: deg }
+      - { name: D2_Motor_Speed, start: 16, len: 16, signed: true, factor: 1, unit: rpm }
+      - { name: D3_Electrical_Output_Frequency, start: 32, len: 16, signed: true, factor: 0.1, unit: hz }
+      - { name: D4_Delta_Resolver_Filtered, start: 48, len: 16, signed: true, factor: 0.1, unit: deg }
+
+  - id: 0x0A6
+    decimal: 166
+    name: M166_Current_Info
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Phase_A_Current, start: 0, len: 16, signed: true, factor: 0.1, unit: A }
+      - { name: D2_Phase_B_Current, start: 16, len: 16, signed: true, factor: 0.1, unit: A }
+      - { name: D3_Phase_C_Current, start: 32, len: 16, signed: true, factor: 0.1, unit: A }
+      - { name: D4_DC_Bus_Current, start: 48, len: 16, signed: true, factor: 0.1, unit: A }
+
+  - id: 0x0A7
+    decimal: 167
+    name: M167_Voltage_Info
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_DC_Bus_Voltage, start: 0, len: 16, signed: true, factor: 0.1, unit: V }
+      - { name: D2_Output_Voltage, start: 16, len: 16, signed: true, factor: 0.1, unit: V }
+      - { name: D3_VAB_Vd_Voltage, start: 32, len: 16, signed: true, factor: 0.1, unit: V }
+      - { name: D4_VBC_Vq_Voltage, start: 48, len: 16, signed: true, factor: 0.1, unit: V }
+
+  - id: 0x0A8
+    decimal: 168
+    name: M168_Flux_ID_IQ_Info
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Flux_Command, start: 0, len: 16, signed: true, factor: 0.001, unit: Wb }
+      - { name: D2_Flux_Feedback, start: 16, len: 16, signed: true, factor: 0.001, unit: Wb }
+      - { name: D3_Id, start: 32, len: 16, signed: true, factor: 0.1, unit: A }
+      - { name: D4_Iq, start: 48, len: 16, signed: true, factor: 0.1, unit: A }
+
+  - id: 0x0A9
+    decimal: 169
+    name: M169_Internal_Voltages
+    cycle_ms: 100
+    source: rms_pm_dbc_20210505
+
+  - id: 0x0AA
+    decimal: 170
+    name: M170_Internal_States
+    cycle_ms: 100
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_VSM_State, start: 0, len: 8, signed: false, enum: INV_VSM_State }
+      - { name: D1_PWM_Frequency, start: 8, len: 8, signed: false, unit: kHz }
+      - { name: D2_Inverter_State, start: 16, len: 8, signed: false, enum: INV_Inverter_State }
+      - { name: D3_Relay_1_Status, start: 24, len: 1, type: bool }
+      - { name: D3_Relay_2_Status, start: 25, len: 1, type: bool }
+      - { name: D3_Relay_3_Status, start: 26, len: 1, type: bool }
+      - { name: D3_Relay_4_Status, start: 27, len: 1, type: bool }
+      - { name: D3_Relay_5_Status, start: 28, len: 1, type: bool }
+      - { name: D3_Relay_6_Status, start: 29, len: 1, type: bool }
+      - { name: D4_Inverter_Run_Mode, start: 32, len: 1, type: bool, enum: INV_Inverter_Run_Mode }
+      - { name: D4_Inverter_Discharge_State, start: 37, len: 3, signed: false, enum: INV_Inverter_Discharge_State }
+      - { name: D5_Inverter_Command_Mode, start: 40, len: 1, type: bool, enum: INV_Inverter_Command_Mode }
+      - { name: D5_Rolling_Counter, start: 44, len: 4, signed: false }
+      - { name: D6_Inverter_Enable_State, start: 48, len: 1, type: bool }
+      - { name: D6_Start_Mode_Active, start: 54, len: 1, type: bool }
+      - { name: D6_Inverter_Enable_Lockout, start: 55, len: 1, type: bool }
+      - { name: D7_Direction_Command, start: 56, len: 1, type: bool }
+      - { name: D7_BMS_Active, start: 57, len: 1, type: bool }
+      - { name: D7_BMS_Torque_Limiting, start: 58, len: 1, type: bool }
+      - { name: D7_Max_Speed_Limiting, start: 59, len: 1, type: bool }
+      - { name: D7_Low_Speed_Limiting, start: 61, len: 1, type: bool }
+
+  - id: 0x0AB
+    decimal: 171
+    name: M171_Fault_Codes
+    cycle_ms: 100
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Post_Fault_Lo, start: 0, len: 16, signed: false, type: fault_word }
+      - { name: D2_Post_Fault_Hi, start: 16, len: 16, signed: false, type: fault_word }
+      - { name: D3_Run_Fault_Lo, start: 32, len: 16, signed: false, type: fault_word }
+      - { name: D4_Run_Fault_Hi, start: 48, len: 16, signed: false, type: fault_word }
+    notes: "POST in bytes 0–3, RUN in bytes 4–7. Bit names in fault_words (Software User Manual V3.6)."
+
+  - id: 0x0AC
+    decimal: 172
+    name: M172_Torque_And_Timer_Info
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Commanded_Torque, start: 0, len: 16, signed: true, factor: 0.1, unit: Nm }
+      - { name: D2_Torque_Feedback, start: 16, len: 16, signed: true, factor: 0.1, unit: Nm }
+      - { name: D3_Power_On_Timer, start: 32, len: 32, signed: false, factor: 0.003, unit: s }
+
+  - id: 0x0AD
+    decimal: 173
+    name: M173_Modulation_And_Flux_Info
+    cycle_ms: 10
+    source: rms_pm_dbc_20210505
+    signals:
+      - { name: D1_Modulation_Index, start: 0, len: 16, signed: true, factor: 0.0001, unit: "" }
+      - { name: D2_Flux_Weakening_Output, start: 16, len: 16, signed: true, factor: 0.1, unit: A }
+      - { name: D3_Id_Command, start: 32, len: 16, signed: true, factor: 0.1, unit: A }
+      - { name: D4_Iq_Command, start: 48, len: 16, signed: true, factor: 0.1, unit: A }
+
+  - id: 0x0AE
+    decimal: 174
+    name: M174_Firmware_Info
+    source: rms_pm_dbc_20210505
+
+  - id: 0x0AF
+    decimal: 175
+    name: M175_Diag_Data
+    source: rms_pm_dbc_20210505
+
+  - id: 0x0B0
+    decimal: 176
+    name: M176_Fast_Info
+    cycle_ms: 3
+    source: rms_pm_dbc_20210505
+    enabled_by: "CAN_ACTIVE_MSGS hi word == 0xFFFE"
+    signals:
+      - { name: Fast_Torque_Command, start: 0, len: 16, signed: true, factor: 0.1, unit: Nm }
+      - { name: Fast_Torque_Feedback, start: 16, len: 16, signed: true, factor: 0.1, unit: Nm }
+      - { name: Fast_Motor_Speed, start: 32, len: 16, signed: true, factor: 1, unit: rpm }
+      - { name: Fast_DC_Bus_Voltage, start: 48, len: 16, signed: true, factor: 0.1, unit: V }
+
+  - id: 0x0C0
+    decimal: 192
+    name: M192_Command_Message
+    direction: VCU_to_INV
+    cycle_ms: 5
+    source: rms_pm_dbc_20210505
+
+  - id: 0x0C1
+    decimal: 193
+    name: M193_Read_Write_Param_Command
+    direction: VCU_to_INV
+    cycle_ms: 0
+    source: rms_pm_dbc_20210505
+    write_mode: true
+
+  - id: 0x0C2
+    decimal: 194
+    name: M194_Read_Write_Param_Response
+    direction: INV_to_VCU
+    source: rms_pm_dbc_20210505
+    notes: "Valid parameter addresses 100-499"
+
+  - id: 0x1D7
+    decimal: 471
+    name: M187_U2C_Command_Txd
+    source: rms_pm_dbc_20210505
+
+  - id: 0x1D5
+    decimal: 469
+    name: M188_U2C_Message_Rxd
+    source: rms_pm_dbc_20210505
+
+  - id: 0x202
+    decimal: 514
+    name: BMS_Current_Limit
+    source: rms_pm_dbc_20210505
+
+enums:
+  INV_VSM_State:
+    source: rms_pm_dbc_20210505
+    catalog: data/vsm_states.yaml
+    width_bits: 8
+    values:
+      0: { name: VSM_Start, description: "Default state at vehicle power-up." }
+      1: { name: Precharge_Init, description: "Turn on the pre-charge relay." }
+      2: { name: Precharge_Active, description: "Waiting for capacitor to finish charging." }
+      3: { name: Precharge_Complete, description: "Completes final checks before proceeding to Wait State." }
+      4: { name: VSM_Wait, description: "Waiting for activation of forward or reverse." }
+      5: { name: VSM_Ready, description: "Activates the inverter state machine to begin energizing the motor." }
+      6: { name: Motor_Running, description: "Normal motor running operation." }
+      7: { name: Blink_Fault_Code, description: "The controller has faulted." }
+      14: { name: Shutdown_KeySwitch_Mode1, description: "Inverter shutdown in process." }
+      15: { name: Reset_Inverter, description: "Power must be recycled after EEPROM programming." }
+
+  INV_Inverter_State:
+    source: rms_pm_dbc_20210505
+    catalog: data/vsm_states.yaml
+    notes: "DBC labels 4–7 and 10–12 as Internal_State; names below are from Software User Manual V3.6 Inverter_Mode."
+    values:
+      0: { name: Power_up, description: "Precharge, power-up state" }
+      1: { name: Stop, description: "Inverter not running; STOP state." }
+      2: { name: Open_Loop, description: "For testing purposes." }
+      3: { name: Closed_Loop, description: "Normal state." }
+      4: { name: Start_Time_Delay, description: "Small delay before starting the inverter." }
+      5: { name: Current_Sensor_Test, description: "Flux ramp and flux regulators enabled." }
+      6: { name: Closed_Loop_Torque, description: "Torque regulator enabled." }
+      7: { name: Torque_Ramp, description: "Start torque ramp." }
+      8: { name: Idle_Run, description: "Inverter running normally." }
+      9: { name: Idle_Stop, description: "Inverter stopped." }
+      10: { name: Ramp_Off_Torque, description: "Ramps down torque command." }
+      11: { name: Ramp_Off_Flux, description: "Ramps down flux command." }
+      12: { name: All_Ramps_Off, description: "Shutoff inverter." }
+      15: { name: Default_Stop, description: "Default – Stop state" }
+
+  INV_Inverter_Discharge_State:
+    source: rms_pm_dbc_20210505
+    conflict: "Gen5/iM DBC adds VAL_ entries 5-7; 20210505 PM DBC CM text stops at 4"
+    values:
+      0: Disabled
+      1: Enabled
+      2: Speed_Check
+      3: Active
+      4: Complete
+      5: { name: Error, source: rms_gen5_dbc_20240129, conflict: true }
+      6: { name: Override, source: rms_gen5_dbc_20240129, conflict: true }
+      7: { name: Timeout, source: rms_gen5_dbc_20240129, conflict: true }
+
+  INV_Inverter_Run_Mode:
+    source: rms_pm_dbc_20210505
+    values:
+      0: Torque_Mode
+      1: Speed_Mode
+
+  INV_Inverter_Command_Mode:
+    source: rms_pm_dbc_20210505
+    values:
+      0: CAN_mode
+      1: VSM_mode
+
+  M192_Inverter_Enable:
+    source: rms_pm_dbc_20210505
+    values:
+      0: "Turn the inverter OFF"
+      1: "Turn the Inverter ON"
+
+  M192_Direction_Command:
+    source: rms_pm_dbc_20210505
+    values:
+      0: CW
+      1: CCW
+
+# Serial RealTerm log columns (PM100DX_Dashboard capture.txt format)
+serial_capture_columns:
+  source: pm100dx_main
+  format: "space-separated uppercase hex, 20 fields per row"
+  skip_header_lines: 3
+  signed_16bit_norm:
+    description: "If raw > 32766/scale, subtract 65535/scale"
+    applies_to: [Torque_Feedback, Motor_Speed, IQ_Command, IQ_Feedback, ID_Command, ID_Feedback]
+  columns:
+    - { index: 0, name: Power_On_Lo_Word, scale: 0.333333, unit: ms, notes: "timer/3 per main.py" }
+    - { index: 1, name: Accel, scale: 0.01, unit: V }
+    - { index: 2, name: Torque_Feedback, scale: 0.1, unit: Nm, signed: true }
+    - { index: 3, name: Torque_Command, scale: 0.1, unit: Nm, signed: true }
+    - { index: 4, name: DC_Voltage, scale: 0.1, unit: V }
+    - { index: 5, name: DC_Current, scale: 0.1, unit: A }
+    - { index: 6, name: Motor_Speed, scale: 1, unit: rpm, signed: true }
+    - { index: 7, name: Flux_Weakening, scale: 0.1, unit: A }
+    - { index: 8, name: Motor_Voltage, scale: 0.1, unit: Vpk }
+    - { index: 9, name: IQ_Command, scale: 0.1, unit: Apk, signed: true }
+    - { index: 10, name: IQ_Feedback, scale: 0.1, unit: Apk, signed: true }
+    - { index: 11, name: ID_Command, scale: 0.1, unit: Apk, signed: true }
+    - { index: 12, name: ID_Feedback, scale: 0.1, unit: Apk, signed: true }
+    - { index: 13, name: Modulation, scale: 0.0001, unit: "" }
+    - { index: 14, name: Module_Temp, scale: 0.1, unit: degC }
+    - { index: 15, name: Motor_Temp, scale: 0.1, unit: degC }
+    - { index: 16, name: Run_Lo, type: fault_word }
+    - { index: 17, name: Run_Hi, type: fault_word }
+    - { index: 18, name: Torque_Shudder, scale: 0.1, unit: Nm, conflict: "main.py also uses index 18 for Brake at /100 — bug" }
+
+# RMS GUI Memory View addresses (defsyms). Not SCI broadcast columns and not CAN payloads.
+serial_parameters:
+  source: rms_defsyms_g3
+  catalog: data/defsyms.yaml
+  protocol: rms_gui_rs232
+  protocol_notes: docs/rms-gui-memory-view.md
+  captures: [yuh.pcapng, yuh2.pcapng, yuh3.pcapng]
+  framing:
+    read: "rmAAAACC\\r"
+    read_reply: "*AAAA=VVVVCC\\n\\r"
+    write: "wmAAAA=VVVVCC\\r"
+    write_reply: RAE
+    checksum: "(-sum(ascii(prefix))) & 0xFF as 2 hex digits"
+  watch_list: "No subscribe opcode. Add = extra rm in the round-robin; remove = stop polling that address (yuh2: Sin_corr added then dropped; VSM/enable/torques stayed)."
+  default_poll: [0x0050, 0x0058, 0x0057, 0x005A, 0x0059]
+  writes_implemented: false
+  glance:
+    - { name: VSM_State, address: 0x0093, type: uint }
+    - { name: Inverter_Mode, address: 0x0092, type: uint }
+    - { name: Inverter_Enable, address: 0x0094, type: uint }
+    - { name: Vehicle_Direction, address: 0x0095, type: int }
+    - { name: Feedback_Speed_RPM, address: 0x0097, type: int }
+    - { name: Commanded_Torque_Nm_x10, address: 0x0098, type: int }
+    - { name: Feedback_Torque_Nm_x10, address: 0x0099, type: int }
+    - { name: V_DC_Filtered_Volts_x10, address: 0x00AD, type: int }
+    - { name: I_DC_Filtered_Amps_x10, address: 0x00AF, type: int }
+    - { name: Inverter_Discharge_State, address: 0x0087, type: hex }
+    - { name: Last_Run_Fault, address: 0x005D, type: hex }
+    - { name: Limit_Flags, address: 0x005C, type: hex }
+    - { name: CAN_Faults, address: 0x00C9, type: hex }
+    - { name: CAN_Status, address: 0x00C8, type: hex }
+
+fault_words:
+  status: complete
+  source: software_user_manual_v36
+  catalog: data/faults.yaml
+  can_message: M171_Fault_Codes
+  can_id: 0x0AB
+  source_note: "POST bits 0–31 in M171 bytes 0–3; RUN bits 32–63 in bytes 4–7. Descriptions in data/faults.yaml."
+  words:
+    - { name: Post_Fault_Lo, bits: "0-15", signal: D1_Post_Fault_Lo }
+    - { name: Post_Fault_Hi, bits: "16-31", signal: D2_Post_Fault_Hi }
+    - { name: Run_Fault_Lo, bits: "32-47", signal: D3_Run_Fault_Lo }
+    - { name: Run_Fault_Hi, bits: "48-63", signal: D4_Run_Fault_Hi }
+  bits:
+    # POST (M171 D1/D2)
+    - { bit: 0, word: Post_Fault_Lo, word_bit: 0, name: Hardware Gate/Desaturation Fault, severity: fault, latching: true }
+    - { bit: 1, word: Post_Fault_Lo, word_bit: 1, name: HW Over-current Fault, severity: fault }
+    - { bit: 2, word: Post_Fault_Lo, word_bit: 2, name: Accelerator input shorted to ground, severity: fault }
+    - { bit: 3, word: Post_Fault_Lo, word_bit: 3, name: Accelerator input open or shorted to 5V, severity: fault }
+    - { bit: 4, word: Post_Fault_Lo, word_bit: 4, name: Current Sensor Low, severity: fault }
+    - { bit: 5, word: Post_Fault_Lo, word_bit: 5, name: Current Sensor High, severity: fault }
+    - { bit: 6, word: Post_Fault_Lo, word_bit: 6, name: Module Temperature Low, severity: fault }
+    - { bit: 7, word: Post_Fault_Lo, word_bit: 7, name: Module Temperature High, severity: fault }
+    - { bit: 8, word: Post_Fault_Lo, word_bit: 8, name: Control PCB Temperature Low, severity: fault }
+    - { bit: 9, word: Post_Fault_Lo, word_bit: 9, name: Control PCB Temperature High, severity: fault }
+    - { bit: 10, word: Post_Fault_Lo, word_bit: 10, name: Gate Drive PCB Temperature Low, severity: fault }
+    - { bit: 11, word: Post_Fault_Lo, word_bit: 11, name: Gate Drive PCB Temperature High, severity: fault }
+    - { bit: 12, word: Post_Fault_Lo, word_bit: 12, name: 5V Sense Voltage Low, severity: fault }
+    - { bit: 13, word: Post_Fault_Lo, word_bit: 13, name: 5V Sense Voltage High, severity: fault }
+    - { bit: 14, word: Post_Fault_Lo, word_bit: 14, name: 12V Sense Voltage Low, severity: fault }
+    - { bit: 15, word: Post_Fault_Lo, word_bit: 15, name: 12V Sense Voltage High, severity: fault }
+    - { bit: 16, word: Post_Fault_Hi, word_bit: 0, name: Internal 2.5V Reference Voltage Low, severity: fault }
+    - { bit: 17, word: Post_Fault_Hi, word_bit: 1, name: Internal 2.5V Reference Voltage High, severity: fault }
+    - { bit: 18, word: Post_Fault_Hi, word_bit: 2, name: Internal 1.5V Reference Voltage Low, severity: fault }
+    - { bit: 19, word: Post_Fault_Hi, word_bit: 3, name: Internal 1.5V Sense Voltage High, severity: fault }
+    - { bit: 20, word: Post_Fault_Hi, word_bit: 4, name: DC Bus Voltage High, severity: fault }
+    - { bit: 21, word: Post_Fault_Hi, word_bit: 5, name: DC Bus Voltage Low, severity: fault }
+    - { bit: 22, word: Post_Fault_Hi, word_bit: 6, name: Pre-charge Timeout, severity: fault }
+    - { bit: 23, word: Post_Fault_Hi, word_bit: 7, name: Pre-charge Voltage Failure, severity: fault }
+    - { bit: 24, word: Post_Fault_Hi, word_bit: 8, name: EEPROM Checksum Invalid, severity: fault }
+    - { bit: 25, word: Post_Fault_Hi, word_bit: 9, name: EEPROM Data Out of Range, severity: fault }
+    - { bit: 26, word: Post_Fault_Hi, word_bit: 10, name: EEPROM Update Required, severity: warning, clear_behavior: not_cleared_by_clear_faults }
+    - { bit: 27, word: Post_Fault_Hi, word_bit: 11, name: Reserved, severity: info }
+    - { bit: 28, word: Post_Fault_Hi, word_bit: 12, name: Reserved, severity: info }
+    - { bit: 29, word: Post_Fault_Hi, word_bit: 13, name: Reserved, severity: info }
+    - { bit: 30, word: Post_Fault_Hi, word_bit: 14, name: Brake input shorted to ground, severity: fault }
+    - { bit: 31, word: Post_Fault_Hi, word_bit: 15, name: Brake input open or shorted to 5V, severity: fault }
+    # RUN (M171 D3/D4)
+    - { bit: 32, word: Run_Fault_Lo, word_bit: 0, name: Motor Over-speed, severity: fault }
+    - { bit: 33, word: Run_Fault_Lo, word_bit: 1, name: Over-current detected by software on motor phase, severity: fault }
+    - { bit: 34, word: Run_Fault_Lo, word_bit: 2, name: DC Bus Over-voltage above the software defined limit for the inverter, severity: fault }
+    - { bit: 35, word: Run_Fault_Lo, word_bit: 3, name: Inverter Over-temperature (any module, GDB, or PCB sensor), severity: fault }
+    - { bit: 36, word: Run_Fault_Lo, word_bit: 4, name: Accelerator Input shorted to ground, severity: fault }
+    - { bit: 37, word: Run_Fault_Lo, word_bit: 5, name: Accelerator Input open or shorted to 5V, severity: fault }
+    - { bit: 38, word: Run_Fault_Lo, word_bit: 6, name: Direction Command Fault, severity: fault }
+    - { bit: 39, word: Run_Fault_Lo, word_bit: 7, name: Inverter Response Time-out, severity: fault }
+    - { bit: 40, word: Run_Fault_Lo, word_bit: 8, name: Hardware Gate/Desaturation Fault, severity: fault, latching: true }
+    - { bit: 41, word: Run_Fault_Lo, word_bit: 9, name: Hardware Over-current, severity: fault }
+    - { bit: 42, word: Run_Fault_Lo, word_bit: 10, name: DC Bus Under-voltage, severity: fault }
+    - { bit: 43, word: Run_Fault_Lo, word_bit: 11, name: CAN Command Message Lost, severity: fault }
+    - { bit: 44, word: Run_Fault_Lo, word_bit: 12, name: Motor Over-temperature, severity: fault }
+    - { bit: 45, word: Run_Fault_Lo, word_bit: 13, name: Reserved, severity: info }
+    - { bit: 46, word: Run_Fault_Lo, word_bit: 14, name: Reserved, severity: info }
+    - { bit: 47, word: Run_Fault_Lo, word_bit: 15, name: Reserved, severity: info }
+    - { bit: 48, word: Run_Fault_Hi, word_bit: 0, name: Brake Input shorted to ground, severity: fault }
+    - { bit: 49, word: Run_Fault_Hi, word_bit: 1, name: Brake Input open or shorted to 5V, severity: fault }
+    - { bit: 50, word: Run_Fault_Hi, word_bit: 2, name: Module A Over-temperature, severity: fault, notes: "PDF table mask 00400000 collides with bit 54; treat bit_number 50 as authoritative (expected 00040000). Not on Gen 2." }
+    - { bit: 51, word: Run_Fault_Hi, word_bit: 3, name: Module B Over-temperature, severity: fault, notes: "Gen 2 inverters do not have this fault." }
+    - { bit: 52, word: Run_Fault_Hi, word_bit: 4, name: Module C Over-temperature, severity: fault, notes: "Gen 2 inverters do not have this fault." }
+    - { bit: 53, word: Run_Fault_Hi, word_bit: 5, name: PCB Over-temperature, severity: fault, notes: "Not available on Gen 2." }
+    - { bit: 54, word: Run_Fault_Hi, word_bit: 6, name: Gate Drive Board 1 Over-temperature, severity: fault, notes: "Not available on Gen 2." }
+    - { bit: 55, word: Run_Fault_Hi, word_bit: 7, name: Gate Drive Board 2 Over-temperature, severity: fault, notes: "Gen 2 boards do not have this fault." }
+    - { bit: 56, word: Run_Fault_Hi, word_bit: 8, name: Gate Drive Board 3 Over-temperature, severity: fault, notes: "Gen 2 boards do not have this fault." }
+    - { bit: 57, word: Run_Fault_Hi, word_bit: 9, name: Current Sensor Fault, severity: fault }
+    - { bit: 58, word: Run_Fault_Hi, word_bit: 10, name: Reserved, severity: info }
+    - { bit: 59, word: Run_Fault_Hi, word_bit: 11, name: Reserved, severity: info }
+    - { bit: 60, word: Run_Fault_Hi, word_bit: 12, name: Hardware based DC Bus over-voltage, severity: fault }
+    - { bit: 61, word: Run_Fault_Hi, word_bit: 13, name: Reserved, severity: info }
+    - { bit: 62, word: Run_Fault_Hi, word_bit: 14, name: Resolver Not Connected, severity: fault }
+    - { bit: 63, word: Run_Fault_Hi, word_bit: 15, name: Inverter Discharge Active, severity: warning }
+
+conflicts:
+  - id: m170_vsm_bit_position
+    summary: "M170 VSM state bit start differs between mur-embedded reconstruction and official RMS DBC"
+    official:
+      source: rms_pm_dbc_20210505
+      signal: D1_VSM_State
+      start_bit: 0
+      len: 8
+    reconstructed:
+      source: mur_cascadia_reconstructed
+      signal: INV_VSMState
+      start_bit: 56
+      len: 8
+    resolution: "Use RMS DBC layout for PM100DX monitor"
+
+  - id: discharge_state_enum
+    summary: "20210505 PM DBC documents discharge states 0-4; Gen5/iM DBC adds 5-7"
+    resolution: "Support 0-7 when parsing M170; label 5-7 only if firmware matches Gen5+"
+
+  - id: m170_extra_limit_flags
+    summary: "Gen5 20240129 DBC adds INV_Limit_Hot_Spot, INV_Limit_Coolant_Derating, INV_Limit_Stall_Burst_Model, etc. on M170"
+    absent_from: rms_pm_dbc_20210505
+    resolution: "Merge from Gen5 DBC if firmware is 204F-era Gen3/G3 hardware with updated CM card"
+
+  - id: can_id_layout
+    summary: "Same signal layout appears at decimal IDs 160-176 OR J1939 extended IDs (e.g. 2365565441 for M170)"
+    resolution: "Configure transport profile: standard_11bit vs j1939_extended vs offset from EEPROM"
+
+  - id: pm100dx_brake_column
+    summary: "main.py uses column 18 for both Torque_Shudder and Brake"
+    resolution: "Confirm RealTerm column order against defsyms; fix in new monitor"

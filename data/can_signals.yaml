@@ -1,0 +1,962 @@
+manual_version: V3.6
+source_pdf: /Users/rrxie/Downloads/Software User Manual (V3_6) For Inverter.pdf
+pages:
+- 18
+- 19
+- 20
+- 33
+- 37
+- 38
+- 47
+- 72
+- 73
+- 74
+protocol_gaps:
+- CAN message IDs, broadcast cycle times, and signal start-bit layouts are not in this manual.
+- 'Refer to external document: CAN Protocol.'
+- Appendix C (CAN Configuration Parameters) contains no parameter table in revision 3.6.
+data_formats:
+  Temperature:
+    variable_type: Signed Integer
+    range: ±3000.0
+    unit: °C
+    multiplier: 10
+  Low Voltage:
+    variable_type: Signed Integer
+    range: ±300.00
+    unit: Volts
+    multiplier: 100
+  High Voltage:
+    variable_type: Signed Integer
+    range: ±3000.0
+    unit: Volts
+    multiplier: 10
+  Torque:
+    variable_type: Signed Integer
+    range: ±3000.0
+    unit: N.m.
+    multiplier: 10
+  Current:
+    variable_type: Signed Integer
+    range: ±3000.0
+    unit: Amps
+    multiplier: 10
+  Angle:
+    variable_type: Signed Integer
+    range: 0 to ±359.9
+    unit: Degrees
+    multiplier: 10
+  Angular Velocity:
+    variable_type: Signed Integer
+    range: ±30000
+    unit: RPM
+    multiplier: 1
+messages:
+- name: Fault_Word
+  transport: CAN
+  direction: status
+  can_id_hex: '0x0AB'
+  can_id_decimal: 171
+  message: M171_Fault_Codes
+  endianness: little
+  cycle_time_ms: 100
+  id_source: rms_pm_dbc_20210505
+  pages:
+  - 33
+  - 37
+  - 38
+  notes:
+  - Manual maps POST faults to CAN bytes 0–3 and RUN faults to bytes 4–7.
+  - CAN message ID, start bit layout, and endianness not specified in this manual; see separate CAN Protocol document.
+  signals:
+  - name: Hardware Gate/Desaturation Fault
+    can_byte: 0
+    can_bit: 0
+    bit_number: 0
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000001'
+  - name: HW Over-current Fault
+    can_byte: 0
+    can_bit: 1
+    bit_number: 1
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000002'
+  - name: Accelerator input shorted to ground
+    can_byte: 0
+    can_bit: 2
+    bit_number: 2
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000004'
+  - name: Accelerator input open or shorted to 5V
+    can_byte: 0
+    can_bit: 3
+    bit_number: 3
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00000008
+  - name: Current Sensor Low
+    can_byte: 0
+    can_bit: 4
+    bit_number: 4
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000010'
+  - name: Current Sensor High
+    can_byte: 0
+    can_bit: 5
+    bit_number: 5
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000020'
+  - name: Module Temperature Low
+    can_byte: 0
+    can_bit: 6
+    bit_number: 6
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000040'
+  - name: Module Temperature High
+    can_byte: 0
+    can_bit: 7
+    bit_number: 7
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00000080
+  - name: Control PCB Temperature Low
+    can_byte: 1
+    can_bit: 8
+    bit_number: 8
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000100'
+  - name: Control PCB Temperature High
+    can_byte: 1
+    can_bit: 9
+    bit_number: 9
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000200'
+  - name: Gate Drive PCB Temperature Low
+    can_byte: 1
+    can_bit: 10
+    bit_number: 10
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000400'
+  - name: Gate Drive PCB Temperature High
+    can_byte: 1
+    can_bit: 11
+    bit_number: 11
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00000800
+  - name: 5V Sense Voltage Low
+    can_byte: 1
+    can_bit: 12
+    bit_number: 12
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00001000'
+  - name: 5V Sense Voltage High
+    can_byte: 1
+    can_bit: 13
+    bit_number: 13
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00002000'
+  - name: 12V Sense Voltage Low
+    can_byte: 1
+    can_bit: 14
+    bit_number: 14
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00004000'
+  - name: 12V Sense Voltage High
+    can_byte: 1
+    can_bit: 15
+    bit_number: 15
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00008000
+  - name: Internal 2.5V Reference Voltage Low
+    can_byte: 2
+    can_bit: 16
+    bit_number: 16
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00010000'
+  - name: Internal 2.5V Reference Voltage High
+    can_byte: 2
+    can_bit: 17
+    bit_number: 17
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00020000'
+  - name: Internal 1.5V Reference Voltage Low
+    can_byte: 2
+    can_bit: 18
+    bit_number: 18
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00040000'
+  - name: Internal 1.5V Sense Voltage High
+    can_byte: 2
+    can_bit: 19
+    bit_number: 19
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00080000
+  - name: DC Bus Voltage High
+    can_byte: 2
+    can_bit: 20
+    bit_number: 20
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00100000'
+  - name: DC Bus Voltage Low
+    can_byte: 2
+    can_bit: 21
+    bit_number: 21
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00200000'
+  - name: Pre-charge Timeout
+    can_byte: 2
+    can_bit: 22
+    bit_number: 22
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00400000'
+  - name: Pre-charge Voltage Failure
+    can_byte: 2
+    can_bit: 23
+    bit_number: 23
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00800000
+  - name: EEPROM Checksum Invalid
+    can_byte: 3
+    can_bit: 24
+    bit_number: 24
+    length_bits: 1
+    severity: fault
+    fault_word_value: '01000000'
+  - name: EEPROM Data Out of Range
+    can_byte: 3
+    can_bit: 25
+    bit_number: 25
+    length_bits: 1
+    severity: fault
+    fault_word_value: '02000000'
+  - name: EEPROM Update Required
+    can_byte: 3
+    can_bit: 26
+    bit_number: 26
+    length_bits: 1
+    severity: warning
+    fault_word_value: '04000000'
+  - name: Reserved
+    can_byte: 3
+    can_bit: 27
+    bit_number: 27
+    length_bits: 1
+    severity: info
+    fault_word_value: 08000000
+  - name: Reserved
+    can_byte: 3
+    can_bit: 28
+    bit_number: 28
+    length_bits: 1
+    severity: info
+    fault_word_value: '10000000'
+  - name: Reserved
+    can_byte: 3
+    can_bit: 29
+    bit_number: 29
+    length_bits: 1
+    severity: info
+    fault_word_value: '20000000'
+  - name: Brake input shorted to ground
+    can_byte: 3
+    can_bit: 30
+    bit_number: 30
+    length_bits: 1
+    severity: fault
+    fault_word_value: '40000000'
+  - name: Brake input open or shorted to 5V
+    can_byte: 3
+    can_bit: 31
+    bit_number: 31
+    length_bits: 1
+    severity: fault
+    fault_word_value: '80000000'
+  - name: Motor Over-speed
+    can_byte: 4
+    can_bit: 32
+    bit_number: 32
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000001'
+  - name: Over-current detected by software on motor phase
+    can_byte: 4
+    can_bit: 33
+    bit_number: 33
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000002'
+  - name: DC Bus Over-voltage above the software defined limit for the inverter
+    can_byte: 4
+    can_bit: 34
+    bit_number: 34
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000004'
+  - name: Inverter Over-temperature (any module, GDB, or PCB sensor)
+    can_byte: 4
+    can_bit: 35
+    bit_number: 35
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00000008
+  - name: Accelerator Input shorted to ground
+    can_byte: 4
+    can_bit: 36
+    bit_number: 36
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000010'
+  - name: Accelerator Input open or shorted to 5V
+    can_byte: 4
+    can_bit: 37
+    bit_number: 37
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000020'
+  - name: Direction Command Fault
+    can_byte: 4
+    can_bit: 38
+    bit_number: 38
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000040'
+  - name: Inverter Response Time-out
+    can_byte: 4
+    can_bit: 39
+    bit_number: 39
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00000080
+  - name: Hardware Gate/Desaturation Fault
+    can_byte: 5
+    can_bit: 40
+    bit_number: 40
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000100'
+  - name: Hardware Over-current
+    can_byte: 5
+    can_bit: 41
+    bit_number: 41
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000200'
+  - name: DC Bus Under-voltage
+    can_byte: 5
+    can_bit: 42
+    bit_number: 42
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00000400'
+  - name: CAN Command Message Lost
+    can_byte: 5
+    can_bit: 43
+    bit_number: 43
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00000800
+  - name: Motor Over-temperature
+    can_byte: 5
+    can_bit: 44
+    bit_number: 44
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00001000'
+  - name: Reserved
+    can_byte: 5
+    can_bit: 45
+    bit_number: 45
+    length_bits: 1
+    severity: info
+    fault_word_value: '00002000'
+  - name: Reserved
+    can_byte: 5
+    can_bit: 46
+    bit_number: 46
+    length_bits: 1
+    severity: info
+    fault_word_value: '00004000'
+  - name: Reserved
+    can_byte: 5
+    can_bit: 47
+    bit_number: 47
+    length_bits: 1
+    severity: info
+    fault_word_value: 00008000
+  - name: Brake Input shorted to ground
+    can_byte: 6
+    can_bit: 48
+    bit_number: 48
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00010000'
+  - name: Brake Input open or shorted to 5V
+    can_byte: 6
+    can_bit: 49
+    bit_number: 49
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00020000'
+  - name: Module A Over-temperature
+    can_byte: 6
+    can_bit: 50
+    bit_number: 50
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00400000'
+  - name: Module B Over-temperature
+    can_byte: 6
+    can_bit: 51
+    bit_number: 51
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00080000
+  - name: Module C Over-temperature
+    can_byte: 6
+    can_bit: 52
+    bit_number: 52
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00100000'
+  - name: PCB Over-temperature
+    can_byte: 6
+    can_bit: 53
+    bit_number: 53
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00200000'
+  - name: Gate Drive Board 1 Over-temperature
+    can_byte: 6
+    can_bit: 54
+    bit_number: 54
+    length_bits: 1
+    severity: fault
+    fault_word_value: '00400000'
+  - name: Gate Drive Board 2 Over-temperature
+    can_byte: 6
+    can_bit: 55
+    bit_number: 55
+    length_bits: 1
+    severity: fault
+    fault_word_value: 00800000
+  - name: Gate Drive Board 3 Over-temperature
+    can_byte: 7
+    can_bit: 56
+    bit_number: 56
+    length_bits: 1
+    severity: fault
+    fault_word_value: '01000000'
+  - name: Current Sensor Fault
+    can_byte: 7
+    can_bit: 57
+    bit_number: 57
+    length_bits: 1
+    severity: fault
+    fault_word_value: '02000000'
+  - name: Reserved
+    can_byte: 7
+    can_bit: 58
+    bit_number: 58
+    length_bits: 1
+    severity: info
+    fault_word_value: '04000000'
+  - name: Reserved
+    can_byte: 7
+    can_bit: 59
+    bit_number: 59
+    length_bits: 1
+    severity: info
+    fault_word_value: 08000000
+  - name: Hardware based DC Bus over-voltage
+    can_byte: 7
+    can_bit: 60
+    bit_number: 60
+    length_bits: 1
+    severity: fault
+    fault_word_value: '10000000'
+  - name: Reserved
+    can_byte: 7
+    can_bit: 61
+    bit_number: 61
+    length_bits: 1
+    severity: info
+    fault_word_value: '20000000'
+  - name: Resolver Not Connected
+    can_byte: 7
+    can_bit: 62
+    bit_number: 62
+    length_bits: 1
+    severity: fault
+    fault_word_value: '40000000'
+  - name: Inverter Discharge Active
+    can_byte: 7
+    can_bit: 63
+    bit_number: 63
+    length_bits: 1
+    severity: warning
+    fault_word_value: '80000000'
+- name: SCI_Broadcast_Records
+  transport: RS232 SCI
+  direction: status
+  can_id_hex: null
+  can_id_decimal: null
+  endianness: null
+  cycle_time_ms: null
+  pages:
+  - 18
+  - 19
+  notes:
+  - 57600 baud, 8N1, no flow control.
+  - Each record is 16-bit; four ASCII nibbles plus space; CRLF after full set.
+  - Update rate depends on record count and processor availability.
+  signals:
+  - name: Power_On_Timer_Lo
+    sci_record: 1
+    description: The low word of the Power On Timer (increments every 3 ms)
+    unit: null
+    multiplier: 1
+    raw_to_physical: physical = raw
+  - name: Filtered_Accel_Pot
+    sci_record: 2
+    description: Filtered Accel-pot input voltage (V) times 100
+    unit: V
+    multiplier: 100
+    raw_to_physical: physical = raw / 100
+  - name: Motor_Torque_Feedback
+    sci_record: 3
+    description: Motor Torque feedback (Nm) times 10
+    unit: N.m
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: Vehicle_Torque_Command
+    sci_record: 4
+    description: Vehicle Torque Command (Nm) times 10
+    unit: N.m
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: DC_Voltage
+    sci_record: 5
+    description: DC Voltage (V) times 10
+    unit: V
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: DC_Current
+    sci_record: 6
+    description: DC Current (A) times 10
+    unit: A
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: Motor_Speed
+    sci_record: 7
+    description: Motor Speed (rpm)
+    unit: rpm
+    multiplier: 1
+    raw_to_physical: physical = raw
+  - name: Flux_Weakening_Regulator_Output
+    sci_record: 8
+    description: Flux Weakening Regulator Output (Apk) times 10
+    unit: Apk
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: Motor_Voltage_Magnitude
+    sci_record: 9
+    description: Motor Voltage Magnitude (Vpk) times 10
+    unit: Vpk
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: IQ_Command
+    sci_record: 10
+    description: IQ Command (Apk) times 10
+    unit: Apk
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: IQ_Feedback
+    sci_record: 11
+    description: IQ Feedback (Apk) times 10
+    unit: Apk
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: ID_Command
+    sci_record: 12
+    description: ID Command (Apk) times 10
+    unit: Apk
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: ID_Feedback
+    sci_record: 13
+    description: ID Feedback (Apk) times 10
+    unit: Apk
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: Modulation
+    sci_record: 14
+    description: Modulation times 10000
+    unit: null
+    multiplier: 10000
+    raw_to_physical: physical = raw / 10000
+  - name: Module_A_Temperature
+    sci_record: 15
+    description: Module A Temperature (°C) times 10
+    unit: °C
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: Motor_Temperature
+    sci_record: 16
+    description: Motor Temperature (°C) times 10
+    unit: °C
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: Run_Fault_Lo_Word
+    sci_record: 17
+    description: Run Fault Low Word
+    unit: null
+    multiplier: 1
+    raw_to_physical: physical = raw
+  - name: Run_Fault_Hi_Word
+    sci_record: 18
+    description: Run Fault High Word
+    unit: null
+    multiplier: 1
+    raw_to_physical: physical = raw
+  - name: Torque_Shudder
+    sci_record: 19
+    description: Torque Shudder (Nm) times 10
+    unit: N.m
+    multiplier: 10
+    raw_to_physical: physical = raw / 10
+  - name: Filtered_Brake_Pot
+    sci_record: 20
+    description: Filtered Brake pot (V) times 100
+    unit: V
+    multiplier: 100
+    raw_to_physical: physical = raw / 100
+- name: GUI_Monitored_Parameters
+  transport: RS232 RMS GUI Memory View
+  direction: status
+  can_id_hex: null
+  can_id_decimal: null
+  pages:
+  - 72
+  - 73
+  - 74
+  signals:
+  - name: Run_Command(Trq=0_Spd=1)
+    description: Current command mode (Torque=0 / Speed=1).
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Torque
+      '1': Speed
+  - name: Commanded_Speed_(RPM)
+    description: Commanded speed in Speed mode.
+    unit: rpm
+    multiplier: 1
+  - name: Feedback_Speed_(RPM)
+    description: Motor speed from position feedback sensor.
+    unit: rpm
+    multiplier: 1
+  - name: Commanded_Torque_(Nm)_x_10
+    description: Commanded torque in torque mode.
+    unit: N.m
+    multiplier: 10
+  - name: Feedback_Torque_(Nm)_x_10
+    description: Calculated motor torque from currents and motor parameters.
+    unit: N.m
+    multiplier: 10
+  - name: Voltage_Feedback_Speed_(RPM)
+    description: Speed from back EMF; valid when sufficient EMF and motor not enabled.
+    unit: rpm
+    multiplier: 1
+  - name: Torque_Shudder_(Nm)_x_10
+    description: Shudder compensation torque.
+    unit: N.m
+    multiplier: 10
+  - name: V_DC_Filtered_(Volts)_x_10
+    description: DC Bus Voltage.
+    unit: V
+    multiplier: 10
+  - name: V_MAG_Filtered_(Volts)_x_10
+    description: Motor output voltage magnitude (line-to-neutral peak).
+    unit: Vpk
+    multiplier: 10
+  - name: SW_Over_Voltage_(Volts)_x_10
+    description: Hard-coded over-voltage threshold.
+    unit: V
+    multiplier: 10
+  - name: I_DC_Filtered_(Amps)_x_10
+    description: Estimated DC bus current.
+    unit: A
+    multiplier: 10
+  - name: I_MAG_Filtered_(Amps)_x_10
+    description: Motor phase current magnitude (peak, not RMS).
+    unit: Apk
+    multiplier: 10
+  - name: SW_Over_Current_(Amps)_x_10
+    description: Hard-coded over-current threshold.
+    unit: A
+    multiplier: 10
+  - name: Motor_Temp_(C)_x_10
+    description: Motor temperature if sensor available.
+    unit: °C
+    multiplier: 10
+  - name: Mod_A_Temp_(C)_x_10
+    description: Phase A power module temperature.
+    unit: °C
+    multiplier: 10
+  - name: Mod_B_Temp_(C)_x_10
+    description: Phase B power module temperature.
+    unit: °C
+    multiplier: 10
+  - name: Mod_C_Temp_(C)_x_10
+    description: Phase C power module temperature.
+    unit: °C
+    multiplier: 10
+  - name: PCB_Temp_(C)_x_10
+    description: Control board PCB temperature.
+    unit: °C
+    multiplier: 10
+  - name: GDB_Temp_(C)_x_10
+    description: Gate driver board PCB temperature (Gen-2 only).
+    unit: °C
+    multiplier: 10
+  - name: GDB_1_Temp_(C)_x_10
+    description: Gate driver board 1 temperature (non Gen-2).
+    unit: °C
+    multiplier: 10
+  - name: GDB_2_Temp_(C)_x_10
+    description: Gate driver board 2 temperature (non Gen-2).
+    unit: °C
+    multiplier: 10
+  - name: GDB_3_Temp_(C)_x_10
+    description: Gate driver board 3 temperature (non Gen-2).
+    unit: °C
+    multiplier: 10
+  - name: RTD1_Temp_(C)_x_10
+    description: RTD1 input temperature.
+    unit: °C
+    multiplier: 10
+  - name: RTD2_Temp_(C)_x_10
+    description: RTD2 input temperature.
+    unit: °C
+    multiplier: 10
+  - name: RTD3_Temp_(C)_x_10
+    description: RTD3 input temperature (Gen-2 only).
+    unit: °C
+    multiplier: 10
+  - name: RTD4_Temp_(C)_x_10
+    description: RTD4 input temperature (Gen-2 only).
+    unit: °C
+    multiplier: 10
+  - name: RTD5_Temp_(C)_x_10
+    description: RTD5 input temperature (Gen-2 only).
+    unit: °C
+    multiplier: 10
+  - name: ID_Bits
+    description: 'Hardware ID: 3=Gen-2/RM/CM200, 2=Gen-3/Gen5.'
+    unit: null
+    multiplier: 1
+    enum:
+      '2': Gen-3/Gen5
+      '3': Gen-2/RM/CM200
+  - name: Inverter_Mode
+    description: Inverter state (inv_mode); see vsm_states.yaml inverter_states.
+    unit: null
+    multiplier: 1
+  - name: VSM_State
+    description: Vehicle state machine state.
+    unit: null
+    multiplier: 1
+  - name: Inverter_Enable
+    description: 1 when inverter enabled, 0 when disabled.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Disabled
+      '1': Enabled
+  - name: Vehicle_Direction
+    description: 'Commanded direction: 1=Forward, 0=Not commanded, -1=Reverse.'
+    unit: null
+    multiplier: 1
+    enum:
+      '-1': Reverse
+      '0': Not commanded
+      '1': Forward
+  - name: Ignition_Input
+    description: DIN5 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Start_Input
+    description: DIN6 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Brake_Switch
+    description: DIN3 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Forward_Switch
+    description: DIN1 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Reverse_Switch
+    description: DIN2 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Regen_Disable_Switch
+    description: DIN4 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: OK_Output_Status
+    description: RLY3 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Precharge_Output_Status
+    description: RLY1 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Main_Output_Status
+    description: RLY2 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Fault_Output_Status
+    description: RLY4 state.
+    unit: null
+    multiplier: 1
+    enum:
+      '0': Deasserted
+      '1': Asserted
+  - name: Hall_Input_1_Status
+    description: Hall Input 1 status.
+    unit: null
+    multiplier: 1
+  - name: Hall_Input_2_Status
+    description: Hall Input 2 status.
+    unit: null
+    multiplier: 1
+  - name: Hall_Input_3_Status
+    description: Hall Input 3 status.
+    unit: null
+    multiplier: 1
+  - name: Encoder_Input_A_Status
+    description: Encoder Input A status.
+    unit: null
+    multiplier: 1
+  - name: Encoder_Input_B_Status
+    description: Encoder Input B status.
+    unit: null
+    multiplier: 1
+  - name: Encoder_Input_Z_Status
+    description: Encoder Input Z status.
+    unit: null
+    multiplier: 1
+  - name: SAT_Fault_Output_Status
+    description: 'HW Desaturation fault output: 0=asserted, 1=deasserted.'
+    unit: null
+    multiplier: 1
+  - name: OC_Fault_Output_Status
+    description: 'HW Over-current fault output: 0=asserted, 1=deasserted.'
+    unit: null
+    multiplier: 1
+  - name: VSM_Accel_Filtered
+    description: Voltage on AIN1; 0=0 V, 500=5.0 V.
+    unit: V
+    multiplier: 100
+  - name: VSM_Brake_Filtered
+    description: Voltage on AIN3; 0=0 V, 500=5.0 V.
+    unit: V
+    multiplier: 100
+  - name: Power_on_Timer_3ms_(Hi_byte)
+    description: Upper 16 bits of 32-bit power-on timer (3 ms intervals).
+    unit: null
+    multiplier: 1
+  - name: Power_on_Timer_3ms_(Lo_byte)
+    description: Lower 16 bits of 32-bit power-on timer.
+    unit: null
+    multiplier: 1
+  - name: Sin_corr_(V)_x_100
+    description: Resolver SIN input peak (Gen 2 and Gen 3).
+    unit: V
+    multiplier: 100
+  - name: Cos_corr_(V)_x_100
+    description: Resolver COS input peak (Gen 2 and Gen 3).
+    unit: V
+    multiplier: 100
+  - name: Motor_Angle_(DEG)_x_10
+    description: Motor shaft rotational position.
+    unit: deg
+    multiplier: 10
+  - name: Delta_Resolver_In_Fil_(DEG)_x_10
+    description: Offset between back EMF angle and resolver angle (motor not enabled).
+    unit: deg
+    multiplier: 10
+- name: EEPROM_Parameter_Message
+  transport: CAN
+  direction: command
+  can_id_hex: null
+  can_id_decimal: null
+  pages:
+  - 25
+  - 47
+  notes:
+  - EEPROM parameters may be programmed via RMS GUI or CAN Parameter message.
+  - Appendix C defers all CAN configuration to separate CAN Protocol document.
+  signals:
+  - name: Inv_Cmd_Mode_EEPROM
+    gui_address: '0x011B'
+    value_range: 0 or 1
+    description: 0=CAN bus control; 1=VSM mode (accelerator/switches).
+  - name: Discharge_Enable_EEPROM
+    gui_address: '0x016D'
+    value_range: 0, 1, 2
+    description: 0=disabled; 1=enabled without faults; 2=enabled with faults.
+  - name: Clear Faults Command
+    value_range: '0'
+    description: Set to 0 to clear faults (symbol name only; GUI address not in this manual).

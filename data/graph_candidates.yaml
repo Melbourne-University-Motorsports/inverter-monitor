@@ -1,0 +1,167 @@
+manual_version: V3.6
+source_pdf: /Users/rrxie/Downloads/Software User Manual (V3_6) For Inverter.pdf
+pages:
+- 19
+- 20
+- 72
+- 73
+- 74
+candidates:
+- signal: Feedback_Speed_(RPM)
+  unit: rpm
+  description: Motor speed from feedback sensor.
+  typical_range: null
+  pages:
+  - 72
+- signal: Commanded_Speed_(RPM)
+  unit: rpm
+  description: Commanded speed in speed mode.
+  typical_range: null
+  pages:
+  - 72
+- signal: Feedback_Torque_(Nm)_x_10
+  unit: N.m
+  description: Calculated motor torque.
+  typical_range: null
+  pages:
+  - 72
+- signal: Commanded_Torque_(Nm)_x_10
+  unit: N.m
+  description: Commanded torque.
+  typical_range: null
+  pages:
+  - 72
+- signal: V_DC_Filtered_(Volts)_x_10
+  unit: V
+  description: DC bus voltage.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 72
+- signal: I_DC_Filtered_(Amps)_x_10
+  unit: A
+  description: Estimated DC bus current.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 72
+- signal: I_MAG_Filtered_(Amps)_x_10
+  unit: Apk
+  description: Phase current magnitude (peak).
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 72
+- signal: Motor_Temp_(C)_x_10
+  unit: °C
+  description: Motor temperature.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 73
+- signal: Mod_A_Temp_(C)_x_10
+  unit: °C
+  description: Module A temperature.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 73
+- signal: Mod_B_Temp_(C)_x_10
+  unit: °C
+  description: Module B temperature.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 73
+- signal: Mod_C_Temp_(C)_x_10
+  unit: °C
+  description: Module C temperature.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 73
+- signal: PCB_Temp_(C)_x_10
+  unit: °C
+  description: Control PCB temperature.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 73
+- signal: VSM_Accel_Filtered
+  unit: V
+  description: Accelerator input voltage.
+  typical_range:
+    manual_format_range: 0–5
+    multiplier: 100
+  pages:
+  - 74
+- signal: VSM_Brake_Filtered
+  unit: V
+  description: Brake input voltage.
+  typical_range:
+    manual_format_range: 0–5
+    multiplier: 100
+  pages:
+  - 74
+- signal: Motor_Torque_Feedback
+  unit: N.m
+  description: SCI broadcast torque feedback.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 19
+- signal: DC_Voltage
+  unit: V
+  description: SCI broadcast DC voltage.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 19
+- signal: DC_Current
+  unit: A
+  description: SCI broadcast DC current.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 19
+- signal: Motor_Speed
+  unit: rpm
+  description: SCI broadcast motor speed.
+  typical_range:
+    manual_format_range: ±30000
+    multiplier: 1
+  pages:
+  - 19
+- signal: IQ_Feedback
+  unit: Apk
+  description: Q-axis current feedback.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 19
+- signal: ID_Feedback
+  unit: Apk
+  description: D-axis current feedback.
+  typical_range:
+    manual_format_range: ±3000.0
+    multiplier: 10
+  pages:
+  - 19
+- signal: Modulation
+  unit: null
+  description: Inverter modulation index.
+  typical_range: null
+  pages:
+  - 19

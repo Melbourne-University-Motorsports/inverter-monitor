@@ -1,0 +1,1848 @@
+source_file: defsyms_20221118_G3.txt
+note: RMS GUI parameter map. Addresses are for the proprietary RS232 Memory View protocol, not the SCI
+  20-word broadcast and not CAN payloads. The 6th column is a GUI group/page id, not an EEPROM default.
+columns:
+- name
+- address
+- type
+- display
+- width_bits
+- gui_group
+sections:
+- section: EEPROM Parameters
+  symbols:
+  - name: Serial_Number_EEPROM
+    address: '0x0113'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Motor_Type_EEPROM
+    address: '0x0119'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Veh_Flux_EEPROM_(Wb)_x_1000
+    address: '0x0100'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Angle_Advance_Factor_EEPROM_x_100
+    address: '0x0149'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Gamma_Adjust_EEPROM_(Deg)_x_10
+    address: '0x011A'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Resolver_PWM_Delay_EEPROM_(Counts)
+    address: '0x0118'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Run_Mode_EEPROM(Trq=0_Spd=1)
+    address: '0x0116'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 1
+    writable: true
+  - name: Inv_Cmd_Mode_EEPROM(CAN=0_VSM=1)
+    address: '0x011B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 1
+    writable: true
+  - name: Key_Switch_Mode_EEPROM
+    address: '0x012B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 1
+    writable: true
+  - name: Precharge_Bypassed_EEPROM_(0=N_1=Y)
+    address: '0x0115'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 1
+    writable: true
+  - name: Relay_Output_State_EEPROM_(0=OFF_1=ON)
+    address: '0x012C'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 1
+    writable: true
+  - name: Discharge_Enable_EEPROM
+    address: '0x016D'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 1
+    writable: true
+  - name: CAN_ID_Offset_EEPROM
+    address: '0x011D'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Extended_Msg_ID_EEPROM(0=N_1=Y)
+    address: '0x0131'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_J1939_Option_Active_EEPROM
+    address: '0x0132'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_OBD2_Enable_EEPROM
+    address: '0x0152'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_BMS_Limit_Enable_EEPROM
+    address: '0x017F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Term_Res_Present_EEPROM
+    address: '0x011E'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Command_Message_Active_EEPROM
+    address: '0x011F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Bit_Rate_EEPROM_(kbps)
+    address: '0x0120'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_ACTIVE_MSGS_EEPROM_(Lo_Word)
+    address: '0x0129'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_ACTIVE_MSGS_EEPROM_(Hi_Word)
+    address: '0x012A'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Fast_Msg_Rate_EEPROM_(ms)
+    address: '0x0180'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Slow_Msg_Rate_EEPROM_(ms)
+    address: '0x0181'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Diag_Data_Tx_Active_EEPROM
+    address: '0x0160'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Inv_Enab_Switch_Active_EEPROM
+    address: '0x0170'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_TimeOut_(/3ms)_EEPROM
+    address: '0x016F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Slave_Cmd_ID_EEPROM
+    address: '0x0177'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: CAN_Slave_Dir_EEPROM_(0=SAME_1=FLIP)
+    address: '0x0178'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 8
+    writable: true
+  - name: IQ_Limit_EEPROM_(Amps)_x_10
+    address: '0x0101'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: true
+  - name: ID_Limit_EEPROM_(Amps)_x_10
+    address: '0x0102'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: true
+  - name: Amp_Hours_EEPROM_(AHrx10)
+    address: '0x0148'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: DC_Volt_Limit_EEPROM_(V)_x_10
+    address: '0x0104'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: true
+  - name: DC_Volt_Hyst_EEPROM_(V)_x_10
+    address: '0x0105'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: true
+  - name: DC_UnderVolt_Thresh_EEPROM_(V)_x_10
+    address: '0x0117'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: true
+  - name: Inv_OverTemp_Limit_EEPROM_(C)_x_10
+    address: '0x0106'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: true
+  - name: Mtr_OverTemp_Limit_EEPROM_(C)_x_10
+    address: '0x0121'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: true
+  - name: Zero_Torque_Temp_EEPROM_(C)_x_10
+    address: '0x015E'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: true
+  - name: Full_Torque_Temp_EEPROM_(C)_x_10
+    address: '0x015D'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: true
+  - name: RTD_Selection_EEPROM_(BITS_1_0)
+    address: '0x014A'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: true
+  - name: Fan_On_Temp_EEPROM_(C)_x_10
+    address: '0x0176'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: true
+  - name: Accel_Pedal_Flipped_EEPROM_(0=N_1=Y)
+    address: '0x0114'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 10
+    writable: true
+  - name: Pedal_Lo_EEPROM_(V)_x_100
+    address: '0x0107'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 10
+    writable: true
+  - name: Accel_Min_EEPROM_(V)_x_100
+    address: '0x0108'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 10
+    writable: true
+  - name: Coast_Lo_EEPROM_(V)_x_100
+    address: '0x0109'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 10
+    writable: true
+  - name: Coast_Hi_EEPROM_(V)_x_100
+    address: '0x010A'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 10
+    writable: true
+  - name: Accel_Max_EEPROM_(V)_x_100
+    address: '0x010B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 10
+    writable: true
+  - name: Pedal_Hi_EEPROM_(V)_x_100
+    address: '0x010C'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 10
+    writable: true
+  - name: Motor_Torque_Limit_EEPROM_(Nm)_x_10
+    address: '0x0110'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Regen_Torque_Limit_EEPROM_(Nm)_x_10
+    address: '0x0111'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Braking_Torque_Limit_EEPROM_(Nm)_x_10
+    address: '0x0112'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Brake_Output_Torque_EEPROM_(Nm)_x_10
+    address: '0x0179'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Kp_Torque_EEPROM_x_10000
+    address: '0x012D'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Ki_Torque_EEPROM_x_10000
+    address: '0x012E'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Kd_Torque_EEPROM_x_100
+    address: '0x012F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Klp_Torque_EEPROM_x_10000
+    address: '0x0130'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Torque_Rate_Limit_EEPROM_(Nm)_x_10
+    address: '0x014B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: true
+  - name: Motor_Overspeed_EEPROM_(RPM)
+    address: '0x0103'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Max_Speed_EEPROM_(RPM)
+    address: '0x010F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Valet_Mode_Speed_EEPROM_(RPM)
+    address: '0x0151'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Regen_Fade_Speed_EEPROM_(RPM)
+    address: '0x010D'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Break_Speed_EEPROM_(RPM)
+    address: '0x010E'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Kp_Speed_EEPROM_x_100
+    address: '0x0122'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Ki_Speed_EEPROM_x_10000
+    address: '0x0123'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Kd_Speed_EEPROM_x_100
+    address: '0x0124'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Klp_Speed_EEPROM_x_10000
+    address: '0x0125'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Speed_Rate_Limit_EEPROM_(RPM/sec)
+    address: '0x014E'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: true
+  - name: Shudder_Compensation_Enable_EEPROM
+    address: '0x0134'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 12
+    writable: true
+  - name: Kp_Shudder_EEPROM_x_100
+    address: '0x0135'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 12
+    writable: true
+  - name: TCLAMP_Shudder_EEPROM_(Nm)_x_10
+    address: '0x0136'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 12
+    writable: true
+  - name: Shudder_Filter_Freq_EEPROM_(Hz)_x_10
+    address: '0x0137'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 12
+    writable: true
+  - name: Shudder_Speed_Fade_EEPROM_(RPM)
+    address: '0x0140'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 12
+    writable: true
+  - name: Shudder_Speed_Lo_EEPROM_(RPM)
+    address: '0x0138'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 12
+    writable: true
+  - name: Shudder_Speed_Hi_EEPROM_(RPM)
+    address: '0x0139'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 12
+    writable: true
+  - name: Brake_Mode_EEPROM_(0=SWITCH_1=POT)
+    address: '0x013A'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Switch_Bypassed_EEPROM
+    address: '0x015F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Lo_EEPROM_(V)_x_100
+    address: '0x013B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Thresh_Lo_EEPROM_(V)_x_100
+    address: '0x0161'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Thresh_Hi_EEPROM_(V)_x_100
+    address: '0x0162'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Min_EEPROM_(V)_x_100
+    address: '0x013C'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Max_EEPROM_(V)_x_100
+    address: '0x013D'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Hi_EEPROM_(V)_x_100
+    address: '0x013E'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Regen_Ramp_Rate_EEPROM_(Sec)_x_1000
+    address: '0x0133'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Brake_Pedal_Flipped_EEPROM_(0=N_1=Y)
+    address: '0x013F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 11
+    writable: true
+  - name: Sin_Offset_EEPROM_(ADC_Counts)
+    address: '0x0163'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Cos_Offset_EEPROM_(ADC_Counts)
+    address: '0x0164'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Sin_Offset_EEPROM_(Voltsx100)
+    address: '0x014C'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: Cos_Offset_EEPROM_(Voltsx100)
+    address: '0x014D'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 0
+    writable: true
+  - name: U2C_Enable_EEPROM
+    address: '0x0171'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: U2C_Setpoint_EEPROM_(Vx10)
+    address: '0x0172'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: LV_Indicator_Threshold_EEPROM_(Vx10)
+    address: '0x01AB'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: LV_Indicator_Hysteresis_EEPROM_(Vx10)
+    address: '0x01AC'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Analog_Output_Function_Select_EEPROM
+    address: '0x014F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: User_EEPROM_1
+    address: '0x01AE'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: User_EEPROM_2
+    address: '0x01AF'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: User_EEPROM_3
+    address: '0x01B0'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+- section: Monitored Parameters - Resolver/Encoder
+  symbols:
+  - name: Sin_corr_(V)_x_100
+    address: '0x0073'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Cos_corr(V)_x_100
+    address: '0x0074'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Gamma_Resolver_(DEG)_x_10
+    address: '0x0075'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Delta_Resolver_In_Fil_(DEG)_x_10
+    address: '0x0089'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Delta_Resolver_In_Fil_at_1000RPM
+    address: '0x0063'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Theta_cmd_pm_(DEG)_x_10
+    address: '0x00B6'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Theta_cmd_Corrected_(DEG)_x_10
+    address: '0x00B7'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+- section: Monitored Parameters - Temperatures
+  symbols:
+  - name: Motor_Temp_(C)_x_10
+    address: '0x00A3'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: Mod_A_Temp_(C)_x_10
+    address: '0x0091'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: Mod_B_Temp_(C)_x_10
+    address: '0x00A4'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: Mod_C_Temp_(C)_x_10
+    address: '0x00A5'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: PCB_Temp_(C)_x_10
+    address: '0x00A6'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: GDB_1_Temp_(C)_x_10
+    address: '0x00AA'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: GDB_2_Temp_(C)_x_10
+    address: '0x00A7'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: GDB_3_Temp_(C)_x_10
+    address: '0x00AB'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: RTD1_Temp_(C)_x_10
+    address: '0x00A8'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: RTD2_Temp_(C)_x_10
+    address: '0x00A9'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: Oil_Temp_(C)_x_10
+    address: '0x0060'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+  - name: Oil_Pressure_(psi)_x_10
+    address: '0x0061'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 9
+    writable: false
+- section: Monitored Parameters - Torque & Speed
+  symbols:
+  - name: Commanded_Speed_(RPM)
+    address: '0x0096'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: false
+  - name: Feedback_Speed_(RPM)
+    address: '0x0097'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: false
+  - name: Speed_Rate_Limit_(RPM/s)
+    address: '0x0086'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: false
+  - name: Commanded_Torque_(Nm)_x_10
+    address: '0x0098'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: false
+  - name: Feedback_Torque_(Nm)_x_10
+    address: '0x0099'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: false
+  - name: Voltage_Feedback_Speed_(RPM)
+    address: '0x00BA'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 7
+    writable: false
+  - name: Torque_Shudder_(Nm)_x_10
+    address: '0x00BC'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 5
+    writable: false
+  - name: Inverter_Discharge_Command
+    address: '0x008A'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Inverter_Discharge_State
+    address: '0x0087'
+    type: int
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Inverter_Discharge_Complete_Counter
+    address: '0x0088'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+- section: Monitored Parameters - DC Voltage & Current
+  symbols:
+  - name: V_DC_Filtered_(Volts)_x_10
+    address: '0x00AD'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: false
+  - name: V_MAG_Filtered_(Volts)_x_10
+    address: '0x00AE'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: false
+  - name: SW_Over_Voltage_(Volts)_x_10
+    address: '0x006D'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: false
+  - name: I_DC_Filtered_(Amps)_x_10
+    address: '0x00AF'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: I_MAG_Filtered_(Amps)_x_10
+    address: '0x00B0'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: SW_Over_Current_(Amps)_x_10
+    address: '0x0071'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Amp_hours_(A_hr)_x_10
+    address: '0x009F'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Ia_ADC_Fil
+    address: '0x00DE'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Ib_ADC_Fil
+    address: '0x00DF'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Ic_ADC_Fil
+    address: '0x00E0'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Ia_corr_(Ampsx10)
+    address: '0x00E1'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Ib_corr_(Ampsx10)
+    address: '0x00E2'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Ic_corr_(Ampsx10)
+    address: '0x00D6'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 2
+    writable: false
+  - name: Vab_Voltage_(Volts)_x_10
+    address: '0x00A1'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: false
+  - name: Vbc_Voltage_(Volts)_x_10
+    address: '0x00A2'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 3
+    writable: false
+- section: Monitored Parameters - VSM IOs
+  symbols:
+  - name: ID_Bits
+    address: '0x00CE'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Group_Number
+    address: '0x00A0'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Inverter_Mode
+    address: '0x0092'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VSM_State
+    address: '0x0093'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Inverter_Enable
+    address: '0x0094'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: BMS_Limit_Msg_Status
+    address: '0x0064'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Vehicle_Direction
+    address: '0x0095'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN1_Forward_Switch
+    address: '0x009B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN2_Reverse_Switch
+    address: '0x009C'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN3_Brake_Switch
+    address: '0x009A'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN4_Regen_Disable_Switch
+    address: '0x00B8'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN5_Ignition_Input
+    address: '0x00B1'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN6_Start_Input
+    address: '0x00B2'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN7_Switch
+    address: '0x005B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: DIN8_Switch
+    address: '0x005E'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Program_Enable_Input
+    address: '0x0065'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RLY1_Precharge_Output_Status
+    address: '0x00B4'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RLY2_Main_Output_Status
+    address: '0x00B5'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RLY3_OK_Output_Status
+    address: '0x00B3'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RLY4_Fault_Output_Status
+    address: '0x00BB'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Fault_Reset_Output_Status
+    address: '0x00C0'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: SAT_Fault_Output_Status
+    address: '0x00C1'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Over-Current_Fault_Output_Status
+    address: '0x00C2'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Over-Voltage_Fault_Output_Status
+    address: '0x00D7'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Hall_Input_1_Status
+    address: '0x00D8'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Hall_Input_2_Status
+    address: '0x00D9'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Hall_Input_3_Status
+    address: '0x00DA'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Encoder_Input_A_Status
+    address: '0x00DB'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Encoder_Input_B_Status
+    address: '0x00DC'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Encoder_Input_Z_Status
+    address: '0x00DD'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VSM_Accel_Filtered_(AIN1_Vx100)
+    address: '0x005F'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VSM_Brake_Filtered_(Ain3_Vx100)
+    address: '0x00BD'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VSM_Brake_Thresh_Lo
+    address: '0x00BE'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VSM_Brake_Thresh_Hi
+    address: '0x00BF'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: 12V_Input_Voltage_(Vx100)
+    address: '0x0062'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: U2C_Output_Voltage_(Vx10)
+    address: '0x0067'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: U2C_Output_Current_(Ax10)
+    address: '0x0068'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: U2C_Status
+    address: '0x0069'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: CAN_Status
+    address: '0x00C8'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: CAN_Faults
+    address: '0x00C9'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: CANES_Low
+    address: '0x00CA'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: CANES_High
+    address: '0x00CB'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: CAN_Tx_Error_Counter_(Max)
+    address: '0x008B'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: CAN_Tx_Error_Counter
+    address: '0x00CC'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: CAN_Rx_Error_Counter
+    address: '0x00CD'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+- section: Monitored Parameters - EEPROM Data
+  symbols:
+  - name: EEprom_Type
+    address: '0x0053'
+    type: uint
+    display: ascii
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: EEprom_Version
+    address: '0x0054'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: EEprom_Data_Size
+    address: '0x0055'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: EEprom_State
+    address: '0x0056'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+- section: Monitored Parameters - Timers & Counters
+  symbols:
+  - name: Power_on_Timer_3ms_(Hi_byte)
+    address: '0x00C3'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Power_on_Timer_3ms_(Lo_byte)
+    address: '0x00C4'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Fast_Loop_Time_(micro_Seconds)
+    address: '0x00C5'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Slow_Loop_Time_(uS)
+    address: '0x00C6'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+- section: Info Parameters - factory programmed, DO NOT attempt to modify
+  symbols: []
+- section: Debug Parameters - not displayed on GUI
+  symbols:
+  - name: IQ_Command
+    address: '0x006A'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: IQ_Feedback
+    address: '0x006B'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: IQ_Feedforward
+    address: '0x006C'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: ID_Command
+    address: '0x006E'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: ID_Feedback
+    address: '0x006F'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: ID_Feedforward
+    address: '0x0070'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Modulation_Index
+    address: '0x0072'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VQ_Command
+    address: '0x0076'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VQ_Feedback
+    address: '0x0077'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VQ_Feedforward
+    address: '0x0078'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VD_Command
+    address: '0x0079'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VD_Feedback
+    address: '0x007A'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: VD_Feedforward
+    address: '0x007B'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Omega_Rotor
+    address: '0x007C'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Omega
+    address: '0x007D'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Omega_slip_feedforward
+    address: '0x007E'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: PLL_frequency
+    address: '0x007F'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Flux_Q_Rotor
+    address: '0x0080'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Flux_D_Rotor
+    address: '0x0081'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Flux_Q_Stator
+    address: '0x0082'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Flux_D_Stator
+    address: '0x0083'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Omega_test
+    address: '0x0084'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+- section: Analog Input Raw ADC Values
+  symbols:
+  - name: AIN1_Counts
+    address: '0x00F2'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: AIN2_Counts
+    address: '0x00F3'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: AIN3_Counts
+    address: '0x00F4'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: AIN4_Counts
+    address: '0x00F5'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: AIN5_Counts
+    address: '0x00F6'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: AIN6_Counts
+    address: '0x00F7'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+- section: GUI Command Parameters
+  symbols:
+  - name: Last_Run_Fault
+    address: '0x005D'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Limit_Flags
+    address: '0x005C'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Run_Command(Trq=0_Spd=1)
+    address: '0x0003'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Veh_Flux_Command_(Wb)_x_1000
+    address: '0x0004'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Resolver_Delay_Command
+    address: '0x0005'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Open_Loop_Command(0=OFF)
+    address: '0x0006'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Omega_tst/4
+    address: '0x0007'
+    type: q15
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: IQ_Ptr_Cmd
+    address: '0x000A'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: IQ_Ptr_int
+    address: '0x0090'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: IQ_Ptr_frac
+    address: '0x008F'
+    type: q15
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: INT_Ptr_Cmd
+    address: '0x000B'
+    type: uint
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: INT_Ptr_Value
+    address: '0x00C7'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Kp_Curr_Gain_x_10000
+    address: '0x000C'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Ki_Curr_Gain_x_10000
+    address: '0x000D'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Kp_Flux_Weakening_x_10000
+    address: '0x000E'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Ki_Flux_Weakening_x_10000
+    address: '0x000F'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Gamma_Adjust_(Deg)_x_10
+    address: '0x0010'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Theta_Cmd_Offset_(Deg)_x_10
+    address: '0x0011'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Outputs_Command
+    address: '0x0012'
+    type: int
+    display: hex
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Exc_FIlter_Command_(BITS_2_1_0)
+    address: '0x0013'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: EXC_Filter_1_Output_Status
+    address: '0x00CF'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: EXC_Filter_2_Output_Status
+    address: '0x00D0'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: EXC_Filter_3_Output_Status
+    address: '0x00D1'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RTD_Select_Command_(BITS_1_0)
+    address: '0x0014'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: RTD_1_Select_Output_Status
+    address: '0x00D2'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RTD_2_Select_Output_Status
+    address: '0x00D3'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RTD_1_Selected_Value_(Ohms)
+    address: '0x00D4'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: RTD_2_Selected_Value_(Ohms)
+    address: '0x00D5'
+    type: uint
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Ia_Offset_Command
+    address: '0x0019'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Ib_Offset_Command
+    address: '0x001A'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Ic_Offset_Command
+    address: '0x001B'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Encoder_Calibration_Command
+    address: '0x0015'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: true
+  - name: Sin_Minimum_Value_(V)_x_100
+    address: '0x00E3'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Sin_Maximum_Value_(V)_x_100
+    address: '0x00E4'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Sin_Offset_(V)_x_100
+    address: '0x00E5'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Cos_Minimum_Value_(V)_x_100
+    address: '0x00E6'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Cos_Maximum_Value_(V)_x_100
+    address: '0x00E7'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false
+  - name: Cos_Offset_(V)_x_100
+    address: '0x00E8'
+    type: int
+    display: dec
+    width_bits: 16
+    gui_group: 6
+    writable: false

@@ -1,0 +1,610 @@
+manual_version: V3.6
+source_pdf: /Users/rrxie/Downloads/Software User Manual (V3_6) For Inverter.pdf
+pages:
+- 32
+- 33
+- 37
+- 38
+- 76
+- 77
+- 78
+- 79
+- 80
+reporting:
+  transport: Fault bits mapped to CAN bytes 0–7 in a fault word; CAN message ID not specified in this manual.
+  legacy_symbols_removed:
+  - post_fault_hi
+  - post_fault_lo
+  - run_fault_hi
+  - run_fault_lo
+  gui_access: Check Faults button on RMS GUI Memory View page.
+  clear_command:
+    name: Clear Faults Command
+    value_to_clear: 0
+    clears: All active faults including POST faults except EEPROM Update Required.
+    can_mode_note: Inverter must be disabled before sending Clear Faults Command in CAN mode.
+  fault_indicator_priority: POST faults (higher) then RUN faults (lower); POST followed by two quick blinks.
+registers:
+- name: POST_Fault_Word
+  can_bytes:
+  - 0
+  - 1
+  - 2
+  - 3
+  bits:
+  - can_byte: 0
+    can_bit: 0
+    bit_number: 0
+    name: Hardware Gate/Desaturation Fault
+    fault_word_value: '00000001'
+    severity: fault
+  - can_byte: 0
+    can_bit: 1
+    bit_number: 1
+    name: HW Over-current Fault
+    fault_word_value: '00000002'
+    severity: fault
+  - can_byte: 0
+    can_bit: 2
+    bit_number: 2
+    name: Accelerator input shorted to ground
+    fault_word_value: '00000004'
+    severity: fault
+  - can_byte: 0
+    can_bit: 3
+    bit_number: 3
+    name: Accelerator input open or shorted to 5V
+    fault_word_value: 00000008
+    severity: fault
+  - can_byte: 0
+    can_bit: 4
+    bit_number: 4
+    name: Current Sensor Low
+    fault_word_value: '00000010'
+    severity: fault
+  - can_byte: 0
+    can_bit: 5
+    bit_number: 5
+    name: Current Sensor High
+    fault_word_value: '00000020'
+    severity: fault
+  - can_byte: 0
+    can_bit: 6
+    bit_number: 6
+    name: Module Temperature Low
+    fault_word_value: '00000040'
+    severity: fault
+  - can_byte: 0
+    can_bit: 7
+    bit_number: 7
+    name: Module Temperature High
+    fault_word_value: 00000080
+    severity: fault
+  - can_byte: 1
+    can_bit: 8
+    bit_number: 8
+    name: Control PCB Temperature Low
+    fault_word_value: '00000100'
+    severity: fault
+  - can_byte: 1
+    can_bit: 9
+    bit_number: 9
+    name: Control PCB Temperature High
+    fault_word_value: '00000200'
+    severity: fault
+  - can_byte: 1
+    can_bit: 10
+    bit_number: 10
+    name: Gate Drive PCB Temperature Low
+    fault_word_value: '00000400'
+    severity: fault
+  - can_byte: 1
+    can_bit: 11
+    bit_number: 11
+    name: Gate Drive PCB Temperature High
+    fault_word_value: 00000800
+    severity: fault
+  - can_byte: 1
+    can_bit: 12
+    bit_number: 12
+    name: 5V Sense Voltage Low
+    fault_word_value: '00001000'
+    severity: fault
+  - can_byte: 1
+    can_bit: 13
+    bit_number: 13
+    name: 5V Sense Voltage High
+    fault_word_value: '00002000'
+    severity: fault
+  - can_byte: 1
+    can_bit: 14
+    bit_number: 14
+    name: 12V Sense Voltage Low
+    fault_word_value: '00004000'
+    severity: fault
+  - can_byte: 1
+    can_bit: 15
+    bit_number: 15
+    name: 12V Sense Voltage High
+    fault_word_value: 00008000
+    severity: fault
+  - can_byte: 2
+    can_bit: 16
+    bit_number: 16
+    name: Internal 2.5V Reference Voltage Low
+    fault_word_value: '00010000'
+    severity: fault
+  - can_byte: 2
+    can_bit: 17
+    bit_number: 17
+    name: Internal 2.5V Reference Voltage High
+    fault_word_value: '00020000'
+    severity: fault
+  - can_byte: 2
+    can_bit: 18
+    bit_number: 18
+    name: Internal 1.5V Reference Voltage Low
+    fault_word_value: '00040000'
+    severity: fault
+  - can_byte: 2
+    can_bit: 19
+    bit_number: 19
+    name: Internal 1.5V Sense Voltage High
+    fault_word_value: 00080000
+    severity: fault
+  - can_byte: 2
+    can_bit: 20
+    bit_number: 20
+    name: DC Bus Voltage High
+    fault_word_value: '00100000'
+    severity: fault
+  - can_byte: 2
+    can_bit: 21
+    bit_number: 21
+    name: DC Bus Voltage Low
+    fault_word_value: '00200000'
+    severity: fault
+  - can_byte: 2
+    can_bit: 22
+    bit_number: 22
+    name: Pre-charge Timeout
+    fault_word_value: '00400000'
+    severity: fault
+  - can_byte: 2
+    can_bit: 23
+    bit_number: 23
+    name: Pre-charge Voltage Failure
+    fault_word_value: 00800000
+    severity: fault
+  - can_byte: 3
+    can_bit: 24
+    bit_number: 24
+    name: EEPROM Checksum Invalid
+    fault_word_value: '01000000'
+    severity: fault
+  - can_byte: 3
+    can_bit: 25
+    bit_number: 25
+    name: EEPROM Data Out of Range
+    fault_word_value: '02000000'
+    severity: fault
+  - can_byte: 3
+    can_bit: 26
+    bit_number: 26
+    name: EEPROM Update Required
+    fault_word_value: '04000000'
+    severity: warning
+  - can_byte: 3
+    can_bit: 27
+    bit_number: 27
+    name: Reserved
+    fault_word_value: 08000000
+    severity: info
+  - can_byte: 3
+    can_bit: 28
+    bit_number: 28
+    name: Reserved
+    fault_word_value: '10000000'
+    severity: info
+  - can_byte: 3
+    can_bit: 29
+    bit_number: 29
+    name: Reserved
+    fault_word_value: '20000000'
+    severity: info
+  - can_byte: 3
+    can_bit: 30
+    bit_number: 30
+    name: Brake input shorted to ground
+    fault_word_value: '40000000'
+    severity: fault
+  - can_byte: 3
+    can_bit: 31
+    bit_number: 31
+    name: Brake input open or shorted to 5V
+    fault_word_value: '80000000'
+    severity: fault
+  diagnostics:
+  - name: Hardware Gate/Desaturation Fault
+    fault_indicator_blinks: 5
+    description: Hardware de-saturation; cannot clear via Clear Fault Command; recycle power.
+    clear_behavior: latching
+  - name: HW Over-current Fault
+    fault_indicator_blinks: 5
+    description: Any current sensor over-current (six faults ORed).
+  - name: Accelerator Shorted
+    fault_indicator_blinks: 4
+    description: Below Pedal_Lo_EEPROM_(V)_x_100.
+  - name: Accelerator Open
+    fault_indicator_blinks: 4
+    description: Above Pedal_Hi_EEPROM_(V)_x_100.
+  - name: Current Sensor Low
+    fault_indicator_blinks: 3
+    description: Below hard-coded -22.5 A.
+  - name: Current Sensor High
+    fault_indicator_blinks: 3
+    description: Above hard-coded 22.5 A.
+  - name: Module Temperature Low
+    fault_indicator_blinks: 1
+    description: Currently not active.
+  - name: Module Temperature High
+    fault_indicator_blinks: 1
+    description: One or more module temperatures above 125 C.
+  - name: Control PCB Temperature Low
+    fault_indicator_blinks: 1
+    description: Below -24 C.
+  - name: Control PCB Temperature High
+    fault_indicator_blinks: 1
+    description: Exceeded 125 C.
+  - name: Gate Drive PCB Temperature Low
+    fault_indicator_blinks: 1
+    description: Below -24 C.
+  - name: Gate Drive PCB Temperature High
+    fault_indicator_blinks: 1
+    description: Exceeded 125 C.
+  - name: 5V Sense Voltage Low
+    fault_indicator_blinks: 2
+    description: 5V sense reading too low.
+  - name: 5V Sense Voltage High
+    fault_indicator_blinks: 2
+    description: 5V sense reading too high.
+  - name: 12V Sense Voltage Low
+    fault_indicator_blinks: 2
+    description: 12V sense reading too low.
+  - name: 12V Sense Voltage High
+    fault_indicator_blinks: 2
+    description: 12V sense reading too high.
+  - name: 2.5V Sense Voltage Low
+    fault_indicator_blinks: 2
+    description: 2.5V sense reading too low.
+  - name: 2.5V Sense Voltage High
+    fault_indicator_blinks: 2
+    description: 2.5V sense reading too high.
+  - name: 1.5V Sense Voltage Low
+    fault_indicator_blinks: 2
+    description: 1.5V sense reading too low.
+  - name: 1.5V Sense Voltage High
+    fault_indicator_blinks: 2
+    description: 1.5V sense reading too high.
+  - name: DC Bus Voltage High
+    fault_indicator_blinks: 6
+    description: During pre-charge above hard-coded SW over-voltage limit.
+  - name: DC Bus Voltage Low
+    fault_indicator_blinks: 6
+    description: DC bus below 100 V.
+  - name: Pre-charge Timeout
+    fault_indicator_blinks: 6
+    description: Not charging at 2.7 V/50 ms and 3 s elapsed.
+  - name: Pre-charge Voltage Failure
+    fault_indicator_blinks: 6
+    description: After pre-charge, DC voltage changed >10 V within 15 ms.
+  - name: EEPROM Checksum Invalid
+    fault_indicator_blinks: 7
+    description: EEPROM checksum not valid.
+  - name: EEPROM Data Out of Range
+    fault_indicator_blinks: 7
+    description: Currently not active.
+  - name: EEPROM Update Required
+    fault_indicator_blinks: 7
+    description: EEPROM parameter count changed; review new parameters.
+    clear_behavior: not_cleared_by_clear_faults
+  - name: Brake Shorted
+    fault_indicator_blinks: 8
+    description: Below Brake_Lo_EEPROM_(V)_x_100.
+  - name: Brake Open
+    fault_indicator_blinks: 8
+    description: Above Brake_Hi_EEPROM_(V)_x_100.
+- name: RUN_Fault_Word
+  can_bytes:
+  - 4
+  - 5
+  - 6
+  - 7
+  bits:
+  - can_byte: 4
+    can_bit: 32
+    bit_number: 32
+    name: Motor Over-speed
+    fault_word_value: '00000001'
+    severity: fault
+  - can_byte: 4
+    can_bit: 33
+    bit_number: 33
+    name: Over-current detected by software on motor phase
+    fault_word_value: '00000002'
+    severity: fault
+  - can_byte: 4
+    can_bit: 34
+    bit_number: 34
+    name: DC Bus Over-voltage above the software defined limit for the inverter
+    fault_word_value: '00000004'
+    severity: fault
+  - can_byte: 4
+    can_bit: 35
+    bit_number: 35
+    name: Inverter Over-temperature (any module, GDB, or PCB sensor)
+    fault_word_value: 00000008
+    severity: fault
+  - can_byte: 4
+    can_bit: 36
+    bit_number: 36
+    name: Accelerator Input shorted to ground
+    fault_word_value: '00000010'
+    severity: fault
+  - can_byte: 4
+    can_bit: 37
+    bit_number: 37
+    name: Accelerator Input open or shorted to 5V
+    fault_word_value: '00000020'
+    severity: fault
+  - can_byte: 4
+    can_bit: 38
+    bit_number: 38
+    name: Direction Command Fault
+    fault_word_value: '00000040'
+    severity: fault
+  - can_byte: 4
+    can_bit: 39
+    bit_number: 39
+    name: Inverter Response Time-out
+    fault_word_value: 00000080
+    severity: fault
+  - can_byte: 5
+    can_bit: 40
+    bit_number: 40
+    name: Hardware Gate/Desaturation Fault
+    fault_word_value: '00000100'
+    severity: fault
+  - can_byte: 5
+    can_bit: 41
+    bit_number: 41
+    name: Hardware Over-current
+    fault_word_value: '00000200'
+    severity: fault
+  - can_byte: 5
+    can_bit: 42
+    bit_number: 42
+    name: DC Bus Under-voltage
+    fault_word_value: '00000400'
+    severity: fault
+  - can_byte: 5
+    can_bit: 43
+    bit_number: 43
+    name: CAN Command Message Lost
+    fault_word_value: 00000800
+    severity: fault
+  - can_byte: 5
+    can_bit: 44
+    bit_number: 44
+    name: Motor Over-temperature
+    fault_word_value: '00001000'
+    severity: fault
+  - can_byte: 5
+    can_bit: 45
+    bit_number: 45
+    name: Reserved
+    fault_word_value: '00002000'
+    severity: info
+  - can_byte: 5
+    can_bit: 46
+    bit_number: 46
+    name: Reserved
+    fault_word_value: '00004000'
+    severity: info
+  - can_byte: 5
+    can_bit: 47
+    bit_number: 47
+    name: Reserved
+    fault_word_value: 00008000
+    severity: info
+  - can_byte: 6
+    can_bit: 48
+    bit_number: 48
+    name: Brake Input shorted to ground
+    fault_word_value: '00010000'
+    severity: fault
+  - can_byte: 6
+    can_bit: 49
+    bit_number: 49
+    name: Brake Input open or shorted to 5V
+    fault_word_value: '00020000'
+    severity: fault
+  - can_byte: 6
+    can_bit: 50
+    bit_number: 50
+    name: Module A Over-temperature
+    fault_word_value: '00400000'
+    severity: fault
+    notes: Gen 2 inverters do not have this fault.
+  - can_byte: 6
+    can_bit: 51
+    bit_number: 51
+    name: Module B Over-temperature
+    fault_word_value: 00080000
+    severity: fault
+    notes: Gen 2 inverters do not have this fault.
+  - can_byte: 6
+    can_bit: 52
+    bit_number: 52
+    name: Module C Over-temperature
+    fault_word_value: '00100000'
+    severity: fault
+    notes: Gen 2 inverters do not have this fault.
+  - can_byte: 6
+    can_bit: 53
+    bit_number: 53
+    name: PCB Over-temperature
+    fault_word_value: '00200000'
+    severity: fault
+    notes: Not available on Gen 2 inverters (Appendix N).
+  - can_byte: 6
+    can_bit: 54
+    bit_number: 54
+    name: Gate Drive Board 1 Over-temperature
+    fault_word_value: '00400000'
+    severity: fault
+    notes: Not available on Gen 2 inverters (Appendix N).
+  - can_byte: 6
+    can_bit: 55
+    bit_number: 55
+    name: Gate Drive Board 2 Over-temperature
+    fault_word_value: 00800000
+    severity: fault
+    notes: Gen 2 boards do not have this fault.
+  - can_byte: 7
+    can_bit: 56
+    bit_number: 56
+    name: Gate Drive Board 3 Over-temperature
+    fault_word_value: '01000000'
+    severity: fault
+    notes: Gen 2 boards do not have this fault.
+  - can_byte: 7
+    can_bit: 57
+    bit_number: 57
+    name: Current Sensor Fault
+    fault_word_value: '02000000'
+    severity: fault
+  - can_byte: 7
+    can_bit: 58
+    bit_number: 58
+    name: Reserved
+    fault_word_value: '04000000'
+    severity: info
+  - can_byte: 7
+    can_bit: 59
+    bit_number: 59
+    name: Reserved
+    fault_word_value: 08000000
+    severity: info
+  - can_byte: 7
+    can_bit: 60
+    bit_number: 60
+    name: Hardware based DC Bus over-voltage
+    fault_word_value: '10000000'
+    severity: fault
+  - can_byte: 7
+    can_bit: 61
+    bit_number: 61
+    name: Reserved
+    fault_word_value: '20000000'
+    severity: info
+  - can_byte: 7
+    can_bit: 62
+    bit_number: 62
+    name: Resolver Not Connected
+    fault_word_value: '40000000'
+    severity: fault
+  - can_byte: 7
+    can_bit: 63
+    bit_number: 63
+    name: Inverter Discharge Active
+    fault_word_value: '80000000'
+    severity: warning
+  diagnostics:
+  - name: Motor Over-speed Fault
+    fault_indicator_blinks: 6
+    description: Above Motor_Overspeed_EEPROM_(RPM).
+  - name: Over-current Fault
+    fault_indicator_blinks: 3
+    description: Phase current above hard-coded SW over-current limit.
+  - name: Over-voltage Fault
+    fault_indicator_blinks: 2
+    description: Filtered DC above hard-coded SW over-voltage limit.
+  - name: Inverter Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Module temp above Inv_OverTemp_Limit_EEPROM_(C)_x_10.
+  - name: Accelerator Input Shorted Fault
+    fault_indicator_blinks: 4
+    description: Below Pedal_Lo_EEPROM_(V)_x_100.
+  - name: Accelerator Input Open Fault
+    fault_indicator_blinks: 4
+    description: Above Pedal_Hi_EEPROM_(V)_x_100.
+  - name: Direction Command Fault
+    fault_indicator_blinks: 7
+    description: Both forward and reverse active; fault has been de-activated.
+  - name: Inverter Response Time-out Fault
+    fault_indicator_blinks: 8
+    description: Inverter not enabled within 2 minutes of enable command.
+  - name: Hardware Gate/Desaturation Fault
+    fault_indicator_blinks: 5
+    description: Hardware de-saturation; cannot clear via Clear Fault Command; recycle power.
+    clear_behavior: latching
+  - name: Hardware Over-current Fault
+    fault_indicator_blinks: 5
+    description: Any current sensor over-current (six faults ORed).
+  - name: Under-voltage Fault
+    fault_indicator_blinks: 2
+    description: Below DC_UnderVolt_Thresh_EEPROM_(V)_x_10.
+  - name: CAN Command Message Lost Fault
+    fault_indicator_blinks: 9
+    description: Heartbeat command message not seen in CAN mode.
+  - name: Motor Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Mtr_OverTemp_Limit_EEPROM_(C)_x_10.
+  - name: Brake Input Shorted Fault
+    fault_indicator_blinks: 10
+    description: Below Brake_Lo_EEPROM_(V)_x_100.
+  - name: Brake Input Open Fault
+    fault_indicator_blinks: 10
+    description: Above Brake_Hi_EEPROM_(V)_x_100.
+  - name: Module A Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Inv_OverTemp_Limit_EEPROM_(C)_x_10; not on Gen 2.
+  - name: Module B Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Inv_OverTemp_Limit_EEPROM_(C)_x_10; not on Gen 2.
+  - name: Module C Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Inv_OverTemp_Limit_EEPROM_(C)_x_10; not on Gen 2.
+  - name: PCB Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Inv_OverTemp_Limit_EEPROM_(C)_x_10; not on Gen 2.
+  - name: Gate Drive Board 1 Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Inv_OverTemp_Limit_EEPROM_(C)_x_10; not on Gen 2.
+  - name: Gate Drive Board 2 Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Inv_OverTemp_Limit_EEPROM_(C)_x_10; Gen 2 boards do not have this fault.
+  - name: Gate Drive Board 3 Over-temperature Fault
+    fault_indicator_blinks: 1
+    description: Above Inv_OverTemp_Limit_EEPROM_(C)_x_10; Gen 2 boards do not have this fault.
+  - name: Current Sensor Fault
+    fault_indicator_blinks: 3
+    description: Current readings out of range; sensor assumed malfunctioning.
+  - name: Resolver Not Connected Fault
+    fault_indicator_blinks: 11
+    description: Resolver not connected.
+  - name: Inverter Discharge Active
+    fault_indicator_blinks: 11
+    description: Inverter discharge in process.
+    clear_behavior: warning
+warnings_distinct:
+- name: EEPROM Update Required
+  register: POST_Fault_Word
+  bit: 26
+- name: Inverter Discharge Active
+  register: RUN_Fault_Word
+  bit: 63
+undocumented_in_bit_tables:
+- name: FWD_RVS_INVALID_STATE_FAULT
+  notes: Declared in Wait State when both /FORWARD and /REVERSE active; not mapped to fault word in this manual.
