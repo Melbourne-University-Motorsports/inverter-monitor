@@ -20,6 +20,11 @@ BLUE = "#6cb6ff"
 SELECTION = "#2d3e55"
 CHIP_ON = "#1f3049"
 
+# Layout rhythm. Pages keep zero side margins so their content aligns with the
+# status strip and toolbar; the main window's own margins frame everything.
+PAGE_MARGINS = (0, 8, 0, 0)
+CARD_MARGINS = (14, 12, 14, 12)
+
 # Semantic color roles for state-driven widgets. A widget sets the `tone`
 # dynamic property (via set_tone) and the QSS selectors in apply_theme do
 # the rest — no inline setStyleSheet fragments.
@@ -122,11 +127,7 @@ def apply_theme(app: QApplication) -> None:
            label must not also use #muted or #unit. */
 {tone_rules}
 
-        QTabWidget::pane {{
-            border: 1px solid {BORDER};
-            border-radius: 8px;
-            top: -1px;
-        }}
+        QTabWidget::pane {{ border: none; }}
         QTabBar::tab {{
             color: {DIM};
             padding: 7px 14px;
@@ -147,6 +148,7 @@ def apply_theme(app: QApplication) -> None:
         }}
         QTableWidget {{ gridline-color: {BORDER}; }}
         QTreeWidget::item {{ padding: 2px 0; }}
+        QListWidget::item {{ padding: 6px 10px; }}
         QHeaderView::section {{
             background: {PANEL_ALT};
             color: {DIM};
@@ -226,6 +228,13 @@ def apply_theme(app: QApplication) -> None:
             color: {TEXT};
             border: 1px solid {BORDER};
             padding: 4px 6px;
+        }}
+
+        QLabel#graphHover {{
+            background: {PANEL};
+            border: 1px solid {BORDER};
+            border-radius: 6px;
+            padding: 6px 8px;
         }}
 
         QScrollBar:vertical {{

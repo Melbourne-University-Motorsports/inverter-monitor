@@ -21,14 +21,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Live RS232 Memory View (COM3, /dev/cu.*, …). Polls watched symbols with rm",
     )
     source.add_argument("--memory-view", metavar="PORT", help=argparse.SUPPRESS)
-    source.add_argument(
-        "--can",
-        metavar="INTERFACE",
-        help="Live CAN (socketcan, pcan, slcan, kvaser, virtual)",
-    )
-    source.add_argument("--bus", metavar="INTERFACE", help=argparse.SUPPRESS)
-    parser.add_argument("--channel", default="can0", help="CAN channel if --can is used")
-    parser.add_argument("--bitrate", type=int, default=500000, help="CAN bitrate")
+    source.add_argument("--can", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--channel", default="can0", help=argparse.SUPPRESS)
+    parser.add_argument("--bitrate", type=int, default=500000, help=argparse.SUPPRESS)
     parser.add_argument("--baud", type=int, default=SCI_BAUD, help="RS232 baud (default 57600)")
     parser.add_argument(
         "--id-offset",
@@ -50,9 +45,8 @@ def main(argv: list[str] | None = None) -> int:
     window.baud.setValue(args.baud)
     window.show()
     serial_port = args.serial or args.memory_view
-    can_iface = args.can or args.bus
     if serial_port:
         window.start_rs232(serial_port, baud=args.baud)
-    elif can_iface:
-        window.start_can(can_iface, args.channel, bitrate=args.bitrate)
+    elif args.can:
+        window.start_can(args.channel, bitrate=args.bitrate)
     return app.exec()

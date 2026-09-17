@@ -19,6 +19,10 @@ class CanFrame:
     is_extended: bool = False
 
 
+class SourceLost(Exception):
+    """The live source is gone (unplugged serial adapter, bus disappeared)."""
+
+
 class FrameSource(Protocol):
     label: str
 
@@ -27,13 +31,28 @@ class FrameSource(Protocol):
     def close(self) -> None: ...
 
 
+def can_interface_for(channel: str) -> str:
+    text = channel.strip()
+    upper = text.upper()
+    if upper.startswith("PCAN"):
+        return "pcan"
+    if upper.startswith("COM") or text.startswith("/dev/"):
+        return "slcan"
+    if text.startswith("vcan"):
+        return "virtual"
+    if text.isdigit():
+        return "kvaser"
+    return "socketcan"
+
+
 class LiveCanSource:
     """python-can bus. Receives continuously; TX is only queued Clear Faults / param writes."""
 
-    def __init__(self, interface: str, channel: str, bitrate: int = 500000) -> None:
+    def __init__(self, channel: str, bitrate: int = 500000, interface: str | None = None) -> None:
         import can
 
-        self.label = f"{interface}:{channel}"
+        interface = interface or can_interface_for(channel)
+        self.label = f"can:{channel}"
         self._bus = can.Bus(
             interface=interface,
             channel=channel,
@@ -154,6 +173,7 @@ class FramePump:
         self._queue = out_queue
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name="can-pump", daemon=True)
+        self.lost_reason: str | None = None
 
     @property
     def source(self) -> FrameSource:
@@ -164,32 +184,55 @@ class FramePump:
 
     def stop(self) -> None:
         self._stop.set()
-        self._source.close()
+        self._interrupt_source()
         self._thread.join(timeout=1.0)
+        if self._thread.is_alive():
+            # close() can block on a yanked USB serial port; don't freeze the UI.
+            threading.Thread(target=self._close_source, name="source-close", daemon=True).start()
+
+    def _interrupt_source(self) -> None:
+        interrupt = getattr(self._source, "interrupt", None)
+        if callable(interrupt):
+            try:
+                interrupt()
+            except Exception:
+                return
+
+    def _close_source(self) -> None:
+        try:
+            self._source.close()
+        except Exception:
+            return
 
     def _run(self) -> None:
         batch = PumpBatch()
         last_flush = time.monotonic()
-        while not self._stop.is_set():
-            try:
-                frame = self._source.recv(0.05)
-            except Exception:
-                time.sleep(0.05)
-                continue
-            if frame is not None:
-                updates = self._decoder.decode_frame(frame.arbitration_id, frame.data)
-                message = self._catalog.message_for(frame.arbitration_id, self._decoder.id_offset)
-                if frame.arbitration_id == SCI_FRAME_ID:
-                    name = "SCI_Broadcast"
-                elif frame.arbitration_id == MEMORY_FRAME_ID:
-                    name = "Memory_View"
-                else:
-                    name = message.name if message else ""
-                batch.frames.append((frame, updates, name))
-            now = time.monotonic()
-            if batch.frames and (len(batch.frames) >= 64 or now - last_flush >= 0.02):
+        try:
+            while not self._stop.is_set():
+                try:
+                    frame = self._source.recv(0.05)
+                except SourceLost as exc:
+                    self.lost_reason = str(exc) or "Connection lost."
+                    break
+                except Exception:
+                    time.sleep(0.05)
+                    continue
+                if frame is not None:
+                    updates = self._decoder.decode_frame(frame.arbitration_id, frame.data)
+                    message = self._catalog.message_for(frame.arbitration_id, self._decoder.id_offset)
+                    if frame.arbitration_id == SCI_FRAME_ID:
+                        name = "SCI_Broadcast"
+                    elif frame.arbitration_id == MEMORY_FRAME_ID:
+                        name = "Memory_View"
+                    else:
+                        name = message.name if message else ""
+                    batch.frames.append((frame, updates, name))
+                now = time.monotonic()
+                if batch.frames and (len(batch.frames) >= 64 or now - last_flush >= 0.02):
+                    self._queue.put(batch)
+                    batch = PumpBatch()
+                    last_flush = now
+            if batch.frames:
                 self._queue.put(batch)
-                batch = PumpBatch()
-                last_flush = now
-        if batch.frames:
-            self._queue.put(batch)
+        finally:
+            self._close_source()

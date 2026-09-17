@@ -12,7 +12,7 @@ from inverter_monitor.store import (
     format_value,
     get_signal,
 )
-from inverter_monitor.ui.theme import set_tone, vsm_tone
+from inverter_monitor.ui.theme import CARD_MARGINS, set_tone, vsm_tone
 
 
 class HexSpinBox(QSpinBox):
@@ -48,7 +48,7 @@ class MetricCard(Card):
         self.keys = keys
         self.key = keys[0] if keys else ""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setContentsMargins(*CARD_MARGINS)
         self._title = QLabel(title)
         self._title.setObjectName("muted")
         self._value = QLabel("—")
@@ -95,13 +95,13 @@ class StatusStrip(Card):
         self._catalog = catalog
         self.setObjectName("strip")
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setContentsMargins(*CARD_MARGINS)
 
         self.vsm_id = QLabel("—")
         self.vsm_id.setObjectName("vsmId")
         self.vsm_name = QLabel("No data")
         self.vsm_name.setObjectName("vsmName")
-        self.vsm_desc = QLabel("Connect a source to start monitoring.")
+        self.vsm_desc = QLabel("")
         self.vsm_desc.setObjectName("muted")
         self.vsm_desc.setWordWrap(True)
 
@@ -137,7 +137,13 @@ class StatusStrip(Card):
         layout.addSpacing(24)
         layout.addLayout(far)
 
-    def update_from(self, snapshot: StoreSnapshot, source_label: str, running: bool) -> None:
+    def update_from(
+        self,
+        snapshot: StoreSnapshot,
+        source_label: str,
+        running: bool,
+        lost_reason: str | None = None,
+    ) -> None:
         vsm = first_signal(
             snapshot,
             "M170_Internal_States.D1_VSM_State",
@@ -161,7 +167,7 @@ class StatusStrip(Card):
                 vsm.enum_description or vsm.enum_name or "VSM_State"
             )
         else:
-            self.vsm_desc.setText(_vsm_wait_text(snapshot, source_label, running))
+            self.vsm_desc.setText("Waiting for VSM" if running else "")
         enable = first_signal(
             snapshot,
             "M170_Internal_States.D6_Inverter_Enable_State",
@@ -174,25 +180,35 @@ class StatusStrip(Card):
             "M170_Internal_States.D2_Inverter_State",
             "MemoryView.Inverter_Mode",
         )
-        enabled = bool(enable.value) if enable else False
-        self.enable.setText("ENABLE ON" if enabled else "ENABLE off")
-        set_tone(self.enable, "ok" if enabled else "dim")
-        if lockout and lockout.value:
-            self.enable.setText("ENABLE LOCKOUT")
-            set_tone(self.enable, "fault")
+        if enable is None:
+            self.enable.setText("ENABLE —")
+            set_tone(self.enable, "dim")
+        else:
+            enabled = bool(enable.value)
+            self.enable.setText("ENABLE ON" if enabled else "ENABLE off")
+            set_tone(self.enable, "ok" if enabled else "dim")
+            if lockout and lockout.value:
+                self.enable.setText("ENABLE LOCKOUT")
+                set_tone(self.enable, "fault")
         self.mode.setText(mode.enum_name.replace("_", " ") if mode and mode.enum_name else "MODE —")
         self.inv.setText(inv.enum_name.replace("_", " ") if inv and inv.enum_name else "INVERTER —")
         fault_count = len(snapshot.active_faults)
         self.faults.setText(f"FAULTS {fault_count}")
         set_tone(self.faults, "fault" if fault_count else "ok")
         self.source.setText(source_label.upper() if running else "DISCONNECTED")
+        set_tone(self.source, None)
         self.rate.setText(f"{snapshot.frames_per_sec:.0f} fps")
-
-
-def _vsm_wait_text(snapshot: StoreSnapshot, source_label: str, running: bool) -> str:
-    frames = snapshot.frames.values()
-    if source_label.startswith("rs232") or any(frame.name == "Memory_View" for frame in frames):
-        return "Waiting for RS232 VSM_State (0x0093)."
-    if running:
-        return "Waiting for VSM_State from CAN M170 or RS232 0x0093."
-    return "Connect a source to start monitoring."
+        if running:
+            return
+        set_tone(self.vsm_id, "dim")
+        self.enable.setText("ENABLE —")
+        set_tone(self.enable, "dim")
+        self.mode.setText("MODE —")
+        self.inv.setText("INVERTER —")
+        self.faults.setText("FAULTS —")
+        set_tone(self.faults, "dim")
+        self.source.setText("DISCONNECTED")
+        set_tone(self.source, "warn" if lost_reason else "dim")
+        self.rate.setText("0 fps")
+        if lost_reason:
+            self.vsm_desc.setText(lost_reason)

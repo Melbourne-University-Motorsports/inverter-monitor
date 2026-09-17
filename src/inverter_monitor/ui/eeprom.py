@@ -7,6 +7,7 @@ from inverter_monitor.catalog import Catalog
 from inverter_monitor.memory_map import EEPROM_GROUP_ORDER, DumpProgress, snapshot_symbols
 from inverter_monitor.store import StoreSnapshot
 from inverter_monitor.ui.symbol_widgets import GroupedSymbolTree
+from inverter_monitor.ui.theme import PAGE_MARGINS
 
 
 class EepromPage(QWidget):
@@ -22,33 +23,27 @@ class EepromPage(QWidget):
         self._loaded = 0
 
         self.pull_btn = QPushButton("Pull from inverter")
-        self.pull_btn.setToolTip("Re-read every EEPROM / firmware word with rm. Does not write.")
         self.pull_btn.clicked.connect(self.pull_requested.emit)
-        self.status = QLabel("Start RS232 to load EEPROM from the inverter.")
+        self.status = QLabel("Start RS232.")
         self.status.setObjectName("muted")
         self.status.setWordWrap(True)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search EEPROM, firmware, motor programming words…")
+        self.search.setPlaceholderText("Search…")
         self.search.setClearButtonEnabled(True)
 
         self.tree = GroupedSymbolTree(show_kind=True)
         self.tree.set_symbols(self._symbols, EEPROM_GROUP_ORDER)
 
-        self.hint = QLabel(
-            "These are the EEPROM words used to program the motor and inverter "
-            "(CAN, resolver, torque limits, …). They are read once when you connect "
-            "over RS232, then left alone so the live watch list stays fast. "
-            "Pull from inverter to reload. Nothing on this page is written back."
-        )
-        self.hint.setObjectName("muted")
-        self.hint.setWordWrap(True)
+        self.readonly = QLabel("Read Only")
+        self.readonly.setObjectName("muted")
         self.match_count = QLabel("")
         self.match_count.setObjectName("muted")
 
         tools = QHBoxLayout()
         tools.addWidget(self.pull_btn)
         tools.addWidget(self.status, 1)
+        tools.addWidget(self.readonly)
         tools.addWidget(self.match_count)
 
         find = QHBoxLayout()
@@ -56,8 +51,7 @@ class EepromPage(QWidget):
         find.addWidget(self.search, 1)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 8, 0, 0)
-        root.addWidget(self.hint)
+        root.setContentsMargins(*PAGE_MARGINS)
         root.addLayout(tools)
         root.addLayout(find)
         root.addWidget(self.tree, 1)
@@ -74,7 +68,7 @@ class EepromPage(QWidget):
         self._rs232 = active
         self.pull_btn.setEnabled(active)
         if not active and self.status.text().startswith("Reading"):
-            self.status.setText("Start RS232 to load EEPROM from the inverter.")
+            self.status.setText("Start RS232.")
 
     def _refresh_filter(self) -> None:
         shown = self.tree.apply_filter(self.search.text())
@@ -97,17 +91,14 @@ class EepromPage(QWidget):
             return
         if not self._rs232:
             if shown:
-                self.status.setText(
-                    f"Last snapshot: {shown}/{len(self._symbols)} words. "
-                    "Switch to RS232 to pull again — CAN cannot read this map."
-                )
+                self.status.setText(f"Last snapshot: {shown}/{len(self._symbols)} words.")
             else:
-                self.status.setText("Start RS232 to load EEPROM from the inverter.")
+                self.status.setText("Start RS232.")
             return
         if progress.total and shown:
-            self.status.setText(f"Loaded {shown}/{len(self._symbols)} words from the inverter.")
+            self.status.setText(f"Loaded {shown}/{len(self._symbols)} words.")
             return
         if progress.total:
             self.status.setText("Waiting for EEPROM replies…")
             return
-        self.status.setText("Press Pull from inverter to read EEPROM.")
+        self.status.setText("Pull to reload.")

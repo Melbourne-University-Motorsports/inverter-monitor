@@ -64,10 +64,14 @@ def test_main_window_starts_and_paints():
     window.show()
     app.processEvents()
     tabs = [window.tabs.tabText(index) for index in range(window.tabs.count())]
-    assert tabs == ["Overview", "Faults", "Graphs", "Symbols", "EEPROM", "Raw", "States"]
+    assert tabs == ["Overview", "Faults", "Graphs", "Symbols", "EEPROM", "Calibration", "Raw", "States"]
     assert window.strip.vsm_name.text()
+    assert window.strip.enable.text() == "ENABLE —"
+    assert window.strip.faults.text() == "FAULTS —"
+    assert window.strip.source.text() == "DISCONNECTED"
     labels = [window.source.itemText(i) for i in range(window.source.count())]
-    assert labels == ["RS232", "CAN"]
+    assert labels == ["RS232"]
+    assert window.source.isHidden()
     assert window.offset.value() == DEFAULT_CAN_ID_OFFSET
     assert window.offset.text() == "0x0A0"
     assert CAN_ID_OFFSET_ADDRESS not in window.watch_list.addresses()
@@ -102,6 +106,11 @@ def test_main_window_starts_and_paints():
     assert "Sev" not in headers
     assert window.faults.clear_btn.text() == "Clear faults"
     assert not window.faults.clear_btn.isEnabled()
+    assert window.calibration.program_btn.text() == "Program EEPROM"
+    assert not window.calibration.program_btn.isEnabled()
+    assert window.calibration.steps.count() == 5
+    assert "EEPROM" in window.calibration.steps.item(4).text()
+    assert "Memory Values" in window.calibration.session.summary.text()
     assert "CAN" in _tree_groups(window.eeprom.tree)
     assert "Motor / Resolver" in _tree_groups(window.eeprom.tree)
     assert "Resolver" in _tree_groups(window.symbols.catalog_tree)
@@ -111,23 +120,12 @@ def test_main_window_starts_and_paints():
     assert window.source.currentText() == "RS232"
     assert not window.refresh_ports_btn.isHidden()
     assert not window.baud.isHidden()
-    assert window.can_iface.isHidden()
+    assert window.can_bitrate.isHidden()
     window.refresh_ports_btn.click()
     app.processEvents()
-    window.source.setCurrentText("CAN")
-    app.processEvents()
-    assert window.offset.isEnabled()
-    assert not window.can_iface.isHidden()
-    assert window.refresh_ports_btn.isHidden()
-    assert window.baud.isHidden()
-    assert not window.tabs.isTabVisible(window.tabs.indexOf(window.eeprom))
-    assert not window.overview.flags["lockout"].isHidden()
-    window.source.setCurrentText("RS232")
-    app.processEvents()
     assert window.tabs.isTabVisible(window.tabs.indexOf(window.eeprom))
-    app.processEvents()
+    assert window.overview.flags["lockout"].isHidden()
     assert not window.refresh_ports_btn.isHidden()
-    assert window.offset.isEnabled()
     window.symbols.search.setText("vsm")
     app.processEvents()
     names = _visible_tree_names(window.symbols.catalog_tree)
@@ -206,8 +204,6 @@ def test_eeprom_snapshot_and_manual_offset():
     window._drain()
     assert window.offset.value() == 0x0C0
     assert window.eeprom.pull_btn.text() == "Pull from inverter"
-    window.source.setCurrentText("CAN")
-    app.processEvents()
     assert window.tabs.isTabVisible(window.tabs.indexOf(window.eeprom))
     assert _tree_value(window.eeprom.tree, "CAN_ID_Offset_EEPROM") == "0x00A0"
     window.close()
@@ -222,8 +218,8 @@ def test_tab_poll_set_preserves_symbols_watch_list():
     window.show()
     app.processEvents()
 
-    extra_name = "Sin_corr_(V)_x_100"
-    extra_address = 0x0073
+    extra_name = "Commanded_Speed_(RPM)"
+    extra_address = 0x0096
     assert window.tabs.currentWidget() is window.overview
     assert window.poller.poll_addresses() == DEFAULT_WATCH_ADDRESSES
     assert extra_address not in window.watch_list.addresses()
@@ -232,7 +228,7 @@ def test_tab_poll_set_preserves_symbols_watch_list():
     window.tabs.setCurrentWidget(window.symbols)
     app.processEvents()
     assert window.poller.poll_addresses() == window.watch_list.addresses()
-    window.symbols.search.setText("sin_corr")
+    window.symbols.search.setText("commanded_speed")
     app.processEvents()
     _select_tree_name(window.symbols.catalog_tree, extra_name)
     window.symbols.add_btn.click()
@@ -270,6 +266,21 @@ def test_tab_poll_set_preserves_symbols_watch_list():
     app.processEvents()
     assert window.poller.poll_addresses() == STATUS_WATCH_ADDRESSES
 
+    window.tabs.setCurrentWidget(window.calibration)
+    app.processEvents()
+    cal_poll = window.poller.poll_addresses()
+    assert extra_address in window.watch_list.addresses()
+    assert extra_address not in cal_poll
+    assert VSM_STATE_ADDRESS in cal_poll
+    assert 0x0005 in cal_poll
+    assert 0x0010 in cal_poll
+    assert 0x0074 in cal_poll
+    assert 0x0089 in cal_poll
+    window.calibration.skip_delay.setChecked(True)
+    app.processEvents()
+    assert "skip" in window.calibration.steps.item(1).text().lower()
+    assert not window.calibration.delay_page.isEnabled()
+
     window.tabs.setCurrentWidget(window.symbols)
     app.processEvents()
     watch_names = [
@@ -289,5 +300,62 @@ def test_tab_poll_set_preserves_symbols_watch_list():
     assert window.watch_list.addresses() == DEFAULT_WATCH_ADDRESSES
     assert window.poller.poll_addresses() == DEFAULT_WATCH_ADDRESSES
     assert not window.symbols.reload_btn.isEnabled()
+    window.close()
+    app.processEvents()
+
+
+def test_calibration_proposes_next_gamma_from_ram_reads():
+    catalog = load_catalog()
+    app = QApplication.instance() or QApplication([])
+    apply_theme(app)
+    window = MainWindow(catalog)
+    decoder = Decoder(catalog)
+    now = 1.0
+    for address, raw in ((0x0010, 100), (0x0089, 800), (0x0097, 1200)):
+        payload = pack_memory_frame(address, raw)
+        updates = decoder.decode_frame(MEMORY_FRAME_ID, payload)
+        window.store.apply_frame(MEMORY_FRAME_ID, payload, updates, now=now, name="Memory_View")
+    window.calibration.update_from(window.store.snapshot(now=now), "RS232", True)
+    assert window.calibration.next_gamma == 0
+    assert window.calibration.apply_gamma_btn.isEnabled()
+    assert "0" in window.calibration.apply_gamma_btn.text()
+    assert "CONVERGED ON" not in window.calibration.gamma_converged_chip.text()
+    window.calibration._delta_at_gamma_write = 800
+    window.calibration.update_from(window.store.snapshot(now=now), "RS232", True)
+    assert not window.calibration.apply_gamma_btn.isEnabled()
+    assert "Keep spinning" in window.calibration.gamma_status.text()
+    assert not window.calibration.program_btn.isEnabled()
+    window.close()
+    app.processEvents()
+
+
+def test_calibration_eeprom_program_enabled_in_wait():
+    catalog = load_catalog()
+    app = QApplication.instance() or QApplication([])
+    apply_theme(app)
+    window = MainWindow(catalog)
+    decoder = Decoder(catalog)
+    now = 1.0
+    for address, raw in (
+        (0x0005, 50),
+        (0x0010, 0xFFF8),
+        (0x0118, 50),
+        (0x011A, 0xFFF8),
+        (0x0056, 5),
+        (0x0092, 1),
+        (VSM_STATE_ADDRESS, 4),
+        (0x0094, 0),
+    ):
+        payload = pack_memory_frame(address, raw)
+        updates = decoder.decode_frame(MEMORY_FRAME_ID, payload)
+        window.store.apply_frame(MEMORY_FRAME_ID, payload, updates, now=now, name="Memory_View")
+    window.calibration.update_from(window.store.snapshot(now=now), "RS232", True)
+    assert window.calibration.program_btn.isEnabled()
+    busy = pack_memory_frame(0x0056, 7)
+    updates = decoder.decode_frame(MEMORY_FRAME_ID, busy)
+    window.store.apply_frame(MEMORY_FRAME_ID, busy, updates, now=now, name="Memory_View")
+    window.calibration.update_from(window.store.snapshot(now=now), "RS232", True)
+    assert not window.calibration.program_btn.isEnabled()
+    assert "programming" in window.calibration.ram_vs_eeprom.text().lower()
     window.close()
     app.processEvents()

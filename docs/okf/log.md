@@ -1,6 +1,11 @@
 # PM100DX Bundle Update Log
 
 ## 2026-09-17
+* **Update**: Calibration Program EEPROM is enabled as a last step. yuh4 (1)
+  confirmed Memory Values Gamma `0x0010` −8/−10 with `RAE`; yuh3 commit pair
+  `wm0000=5a0f` / `wm0001=0059` is used after copying Delay/Gamma into
+  `0x0118`/`0x011A`. Zeros while `EEprom_State` is 7 are treated as busy.
+  Original `yuh4.pcapng` stays USB mass-storage and is ignored.
 * **Update**: Expanded `inverter/memory-view.md` with the full reverse-engineered
   RS232 findings (USBPcap `yuh/yuh2/yuh3` framing, checksum, connect sequence,
   watch-list timeline, RAM/EEPROM write captures) and how the monitor implements

@@ -1,10 +1,8 @@
 # RMS GUI Memory View protocol
 
-Captured on Windows 10 through an ADAM-4562 (Prolific PL2303) while RMS GUI had the COM port. USBPcap files: `yuh.pcapng` (connect + default poll), `yuh2.pcapng` (watch list add/remove), `yuh3.pcapng` (RAM write + EEPROM commit).
+Captured on Windows 10 through an ADAM-4562 (Prolific PL2303) while RMS GUI had the COM port. USBPcap files: `yuh.pcapng` (connect + default poll), `yuh2.pcapng` (watch list add/remove), `yuh3.pcapng` (RAM write + EEPROM commit), `yuh4 (1).pcapng` (Memory Values Gamma −8/−10). Original `yuh4.pcapng` is USB mass-storage, not serial.
 
 This is **not** the SCI 20-word ASCII broadcast. Opening Memory View switches the inverter onto this request/response grammar. Addresses are the `defsyms` Memory View map in `data/defsyms.yaml`.
-
-**Not an EEPROM write feature.** The monitor can **search and watch** symbols (Symbols tab) and poll them with `rm` via **RS232**. Writes (`wm`, addresses `0x0000`/`0x0001`/`0x0002`) stay documented only — do not wire them into the monitor.
 
 ## Framing
 
@@ -70,16 +68,17 @@ End-of-capture loop:
 
 A later Memory View client should treat “watch X” as “include `rm` of X in the poll set” and “unwatch X” as “omit it”. Do not send `wm` for that.
 
-## Writes (yuh2, yuh3) — document only
+## Writes (yuh2, yuh3, yuh4)
 
-Not a product feature. Observed so we do not confuse it with watch-list traffic.
+Observed so we do not confuse it with watch-list traffic.
 
 ### RAM write
 
 `wmAAAA=VVVV` then `RAE`, then the GUI often `rm`s the same address.
 
 - yuh2: `wm0002=0000` twice. `0x0002` is not in defsyms. Immediate readback `0`. Not added to the watch loop (only those two readbacks).
-- yuh3: `wm0117=0000` five times (`DC_UnderVolt_Thresh_EEPROM`, already 0), then `wm0117=0005`. Readback became **5** (`0.5 V` at ×10). That is a **RAM** change: EEPROM state stayed `5`.
+- yuh3: `wm0117=0000` five times (`DC_UnderVolt_Thresh_EEPROM`, already 0), then `wm0117=0005`. Readback became **5** (`0.5 V` at ×10). That is a **RAM** change: EEPROM state stayed `5`. `Gamma_Adjust_EEPROM` (0x011A) read **−8** (`0xFFF8`) throughout; Memory Values Gamma Adjust (0x0010) was never on the wire.
+- yuh4 (1): five `wm` of `0x0010` only: `fff8` (−8), `fff8`, `fff6` (−10), `fff6`, `fff8`. Each `RAE` in ~15 ms. Readback −8→−10 at 25.0 s, −10→−8 at 53.9 s. EEPROM dump at connect: serial 1637, gamma EEPROM −8, delay EEPROM 50, DC undervolt 0, `EEprom_State` 5. VSM/enable never polled.
 
 ### EEPROM commit
 
@@ -93,9 +92,11 @@ RAE
 rm0056  →  EEprom_State  5 → 7
 ```
 
-`0x5A0F` / `0x0059` look like a two-word save/unlock, not user parameters. Immediately afterwards several EEPROM reads returned **zero** (serial number `0x0113` went `0x0665` → `0`, and `0x0117` read back as **0** again). Capture ended with `EEprom_State = 7`. Likely busy/reload, or the save did not keep the RAM value — do not treat this as a known-good flash sequence.
+`0x5A0F` / `0x0059` look like a two-word save/unlock, not user parameters. Immediately afterwards **all** EEPROM reads returned **zero** (serial number `0x0113` went `0x0665` → `0`, gamma EEPROM −8 → 0, and `0x0117` read back as **0** again). Capture ended with `EEprom_State = 7`. Treat that as the busy window, not proof the flash stored 0. VSM/enable were not polled (EEPROM tab dump).
 
-Do not implement `wm`, `0x0000`, or `0x0001` in the monitor.
+Original yuh4.pcapng (USBPcap1) is USB mass-storage BOT (`USBC`/`USBS`), 46 kB, no `rm`/`wm`.
+
+The monitor Calibration tab iterates Memory Values, then optionally copies Delay/Gamma into `0x0118`/`0x011A` and sends this commit pair (Wait, enable off). Other EEPROM parameters stay read-only.
 
 ## How this sits next to SCI
 
@@ -106,4 +107,4 @@ Do not implement `wm`, `0x0000`, or `0x0001` in the monitor.
 | EEPROM map | No | `defsyms.yaml` addresses |
 | Port | Same ADAM COM, 57600 8N1 in practice | Exclusive with RMS GUI |
 
-The read-only app today listens to SCI or CAN only. A future Memory View source would open the port itself, send `rm` for a chosen watch list, and never send `wm`.
+The read-only SCI/CAN paths still never send `wm`. Memory View RS232 may `wm` Clear Faults, Calibration RAM, and Calibration Program EEPROM.

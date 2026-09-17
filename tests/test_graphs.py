@@ -19,7 +19,14 @@ from inverter_monitor.memory_map import (
     pack_memory_frame,
 )
 from inverter_monitor.store import InverterStore
-from inverter_monitor.ui.graphs import GraphsPage, graph_signal_matches
+from inverter_monitor.ui.graphs import (
+    GraphsPage,
+    format_graph_number,
+    format_hover_html,
+    graph_signal_matches,
+    hover_rows,
+    nearest_sample,
+)
 from inverter_monitor.ui.theme import apply_theme
 
 
@@ -87,6 +94,34 @@ def test_graph_aliases_map_to_memory_view_addresses():
     assert "MemoryView.Feedback_Speed_(RPM)" not in keys
 
 
+def test_nearest_sample_picks_closest_time():
+    points = [(0.0, 10.0), (1.0, 20.0), (2.0, 30.0)]
+    assert nearest_sample(points, 1.1) == (1.0, 20.0)
+    assert nearest_sample(points, 0.4) == (0.0, 10.0)
+    assert nearest_sample([], 1.0) is None
+
+
+def test_hover_rows_format_each_series_at_that_time():
+    rows = hover_rows(
+        [
+            ("Motor_Speed", [(0.0, 1500.0), (1.0, 1600.0)], "#4c8dff"),
+            ("Torque_Feedback", [(0.0, 10.0), (1.0, 12.5)], "#3ecf8e"),
+            ("Empty", [], "#f5a524"),
+        ],
+        1.0,
+    )
+    assert rows == [
+        ("Motor_Speed", "1600.0", "#4c8dff"),
+        ("Torque_Feedback", "12.5", "#3ecf8e"),
+    ]
+    assert format_graph_number(9.25) == "9.25"
+    html = format_hover_html(1.0, rows)
+    assert "1.00 s" in html
+    assert "Motor_Speed" in html
+    assert "1600.0" in html
+    assert "Torque_Feedback" in html
+
+
 def test_graphs_plot_memory_view_speed():
     page = _page()
     catalog = load_catalog()
@@ -100,3 +135,27 @@ def test_graphs_plot_memory_view_speed():
     assert page._buffers[SPEED][-1][1] == 1500.0
     page.close()
     QApplication.instance().processEvents()
+
+
+def test_graphs_hover_lists_values_at_that_time():
+    page = _page()
+    catalog = load_catalog()
+    store = InverterStore(catalog)
+    decoder = Decoder(catalog)
+    payload = pack_memory_frame(FEEDBACK_SPEED_ADDRESS, 1500)
+    updates = decoder.decode_frame(MEMORY_FRAME_ID, payload)
+    store.apply_frame(MEMORY_FRAME_ID, payload, updates, now=1.0, name="Memory_View")
+    page.update_from(store.snapshot(now=1.0))
+    page.hover_at(0.0)
+    app = QApplication.instance()
+    app.processEvents()
+    assert page.hover_label.isVisible()
+    text = page.hover_label.text()
+    assert "0.00 s" in text
+    assert "D2_Motor_Speed" in text
+    assert "1500.0" in text
+    page.hover_at(None)
+    app.processEvents()
+    assert page.hover_label.isHidden()
+    page.close()
+    app.processEvents()

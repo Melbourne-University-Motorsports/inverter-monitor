@@ -17,6 +17,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from inverter_monitor.calibration import (
+    EEPROM_WRITE_ADDRESSES,
+    RAM_WRITE_ADDRESSES,
+    eeprom_persist_writes,
+    read_calibration,
+    write_blocked_reason,
+)
 from inverter_monitor.catalog import Catalog
 from inverter_monitor.decode import M193_PARAM_COMMAND_ID, PARAM_CLEAR_FAULTS, Decoder, pack_param_write
 from inverter_monitor.memory_map import (
@@ -32,6 +39,7 @@ from inverter_monitor.serial_memory import SerialMemoryViewSource
 from inverter_monitor.serial_sci import SCI_BAUD, list_serial_ports
 from inverter_monitor.store import InverterStore, first_signal, get_signal
 from inverter_monitor.transport import FramePump, LiveCanSource
+from inverter_monitor.ui.calibration import CalibrationPage
 from inverter_monitor.ui.eeprom import EepromPage
 from inverter_monitor.ui.faults import FaultsPage
 from inverter_monitor.ui.graphs import GraphsPage
@@ -54,22 +62,23 @@ class MainWindow(QMainWindow):
         self.catalog = catalog
         self.store = InverterStore(catalog)
         self.decoder = Decoder(catalog)
-        self.bus_interface = "socketcan"
         self.bitrate = 500000
         self.serial_baud = SCI_BAUD
         self._queue: queue.SimpleQueue = queue.SimpleQueue()
         self._pump: FramePump | None = None
         self._source_label = "disconnected"
+        self._lost_reason: str | None = None
         self.watch_list = WatchList(DEFAULT_WATCH_ADDRESSES)
         self.poller = MemoryPoller(self.watch_list)
         self._offset_from_memory: int | None = None
         self._offset_from_user = False
         self._setting_offset = False
 
+        self.source_label = QLabel("Source")
         self.source = QComboBox()
-        self.source.addItems(["RS232", "CAN"])
-        self.can_iface = QComboBox()
-        self.can_iface.addItems(["socketcan", "pcan", "slcan", "kvaser", "virtual"])
+        self.source.addItems(["RS232"])
+        self.source.hide()
+        self.source_label.hide()
         self.channel = QComboBox()
         self.channel.setEditable(True)
         self.channel.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -94,15 +103,13 @@ class MainWindow(QMainWindow):
 
         self.port_label = QLabel("Port")
         self.baud_label = QLabel("Baud")
-        self.iface_label = QLabel("CAN iface")
         self.bitrate_label = QLabel("Bitrate")
         self.offset_label = QLabel("CAN ID offset")
 
         toolbar = QHBoxLayout()
-        toolbar.addWidget(QLabel("Source"))
+        toolbar.addWidget(self.source_label)
         toolbar.addWidget(self.source)
-        toolbar.addWidget(self.iface_label)
-        toolbar.addWidget(self.can_iface)
+        toolbar.addSpacing(14)
         toolbar.addWidget(self.port_label)
         toolbar.addWidget(self.channel, 1)
         toolbar.addWidget(self.refresh_ports_btn)
@@ -110,8 +117,10 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.baud)
         toolbar.addWidget(self.bitrate_label)
         toolbar.addWidget(self.can_bitrate)
+        toolbar.addSpacing(14)
         toolbar.addWidget(self.offset_label)
         toolbar.addWidget(self.offset)
+        toolbar.addSpacing(14)
         toolbar.addWidget(self.connect_btn)
 
         self.strip = StatusStrip(catalog)
@@ -127,11 +136,15 @@ class MainWindow(QMainWindow):
         self.symbols = SymbolsPage(catalog, self.watch_list)
         self.eeprom = EepromPage(catalog)
         self.eeprom.pull_requested.connect(self._pull_eeprom)
+        self.calibration = CalibrationPage()
+        self.calibration.ram_write_requested.connect(self._calibration_ram_write)
+        self.calibration.eeprom_commit_requested.connect(self._calibration_eeprom_commit)
         self.tabs.addTab(self.overview, "Overview")
         self.tabs.addTab(self.faults, "Faults")
         self.tabs.addTab(self.graphs, "Graphs")
         self.tabs.addTab(self.symbols, "Symbols")
         self.tabs.addTab(self.eeprom, "EEPROM")
+        self.tabs.addTab(self.calibration, "Calibration")
         self.tabs.addTab(self.raw, "Raw")
         self.tabs.addTab(self.states, "States")
         self.tabs.currentChanged.connect(self._sync_poll_set)
@@ -139,6 +152,8 @@ class MainWindow(QMainWindow):
 
         root = QWidget()
         layout = QVBoxLayout(root)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
         layout.addLayout(toolbar)
         layout.addWidget(self.strip)
         layout.addWidget(self.tabs, 1)
@@ -158,8 +173,11 @@ class MainWindow(QMainWindow):
         self._timer.start()
 
         self.source.currentTextChanged.connect(self._source_changed)
-        self.can_iface.currentTextChanged.connect(lambda _text: self._source_changed(self.source.currentText()))
         self._source_changed(self.source.currentText())
+        self.offset_label.hide()
+        self.offset.hide()
+        self.bitrate_label.hide()
+        self.can_bitrate.hide()
 
     def start_rs232(self, port: str, baud: int = SCI_BAUD) -> None:
         self.source.setCurrentText("RS232")
@@ -171,11 +189,10 @@ class MainWindow(QMainWindow):
     def start_memory_view(self, port: str, baud: int = SCI_BAUD) -> None:
         self.start_rs232(port, baud=baud)
 
-    def start_can(self, interface: str, channel: str, bitrate: int = 500000) -> None:
+    def start_can(self, channel: str, bitrate: int = 500000) -> None:
+        if self.source.findText("CAN") < 0:
+            self.source.addItem("CAN")
         self.source.setCurrentText("CAN")
-        if self.can_iface.findText(interface) < 0:
-            self.can_iface.addItem(interface)
-        self.can_iface.setCurrentText(interface)
         self.can_bitrate.setValue(bitrate)
         self._set_channel(channel)
         if self._pump is None:
@@ -204,7 +221,7 @@ class MainWindow(QMainWindow):
         rs232 = name == "RS232"
         for widget in (self.baud, self.baud_label, self.refresh_ports_btn):
             widget.setVisible(rs232)
-        for widget in (self.can_iface, self.iface_label, self.can_bitrate, self.bitrate_label):
+        for widget in (self.can_bitrate, self.bitrate_label):
             widget.setVisible(not rs232)
         if rs232:
             self.port_label.setText("Port")
@@ -213,16 +230,8 @@ class MainWindow(QMainWindow):
             self.overview.update_from(self.store.snapshot(), "RS232")
             return
         self.port_label.setText("Channel")
-        iface = self.can_iface.currentText()
-        defaults = {
-            "socketcan": "can0",
-            "pcan": "PCAN_USBBUS1",
-            "slcan": "",
-            "kvaser": "0",
-            "virtual": "vcan0",
-        }
         if not self._channel_text() or _looks_like_serial(self._channel_text()):
-            self._set_channel(defaults.get(iface, "can0"))
+            self._set_channel("can0")
         self._sync_eeprom_tab()
         self.overview.update_from(self.store.snapshot(), "CAN")
 
@@ -233,6 +242,8 @@ class MainWindow(QMainWindow):
             return
         if current is self.graphs:
             addresses = (*STATUS_WATCH_ADDRESSES, *self.graphs.poll_addresses())
+        elif current is self.calibration:
+            addresses = (*STATUS_WATCH_ADDRESSES, *self.calibration.poll_addresses())
         elif current is self.faults or current is self.states or current is self.eeprom:
             addresses = STATUS_WATCH_ADDRESSES
         else:
@@ -257,15 +268,15 @@ class MainWindow(QMainWindow):
             return SerialMemoryViewSource(port, self.poller, baud=self.baud.value())
         if kind != "CAN":
             raise ValueError(f"Unknown source: {kind}")
-        interface = self.can_iface.currentText().strip() or self.bus_interface
         channel = self._channel_text()
         if not channel:
-            raise FileNotFoundError("Set a CAN channel (can0, PCAN_USBBUS1, …).")
+            raise FileNotFoundError("Set a CAN channel.")
         self.bitrate = self.can_bitrate.value()
-        return LiveCanSource(interface=interface, channel=channel, bitrate=self.bitrate)
+        return LiveCanSource(channel=channel, bitrate=self.bitrate)
 
     def _toggle(self) -> None:
         if self._pump is not None:
+            self._lost_reason = None
             self._stop()
             return
         try:
@@ -273,6 +284,7 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Cannot start source", str(exc))
             return
+        self._lost_reason = None
         kind = self.source.currentText()
         self.decoder = Decoder(
             self.catalog,
@@ -296,6 +308,12 @@ class MainWindow(QMainWindow):
         self._source_label = "disconnected"
         self.eeprom.set_rs232_active(False)
 
+    def _source_lost(self, reason: str) -> None:
+        self._stop()
+        self._lost_reason = reason
+        if self.source.currentText() == "RS232":
+            self._refresh_ports()
+
     def _drain(self) -> None:
         drained = 0
         while drained < 32:
@@ -306,6 +324,8 @@ class MainWindow(QMainWindow):
             for frame, updates, name in batch.frames:
                 self.store.apply_frame(frame.arbitration_id, frame.data, updates, name=name)
             drained += 1
+        if self._pump is not None and self._pump.lost_reason:
+            self._source_lost(self._pump.lost_reason)
         snapshot = self.store.snapshot()
         offset_signal = get_signal(snapshot, "MemoryView.CAN_ID_Offset_EEPROM")
         if offset_signal and offset_signal.raw is not None and not self._offset_from_user:
@@ -317,7 +337,7 @@ class MainWindow(QMainWindow):
                 self._setting_offset = False
         running = self._pump is not None
         rs232 = running and self.source.currentText() == "RS232"
-        self.strip.update_from(snapshot, self._source_label, running)
+        self.strip.update_from(snapshot, self._source_label, running, self._lost_reason)
         self.overview.update_from(snapshot, self.source.currentText())
         self.faults.set_connected(running)
         self.faults.update_from(snapshot)
@@ -327,6 +347,7 @@ class MainWindow(QMainWindow):
         self.eeprom.set_rs232_active(rs232)
         self.eeprom.update_from(snapshot, self.poller.dump_progress())
         self._sync_eeprom_tab()
+        self.calibration.update_from(snapshot, self.source.currentText(), rs232)
         self.raw.update_from(snapshot)
         self.states.update_from(snapshot)
 
@@ -340,6 +361,13 @@ class MainWindow(QMainWindow):
         source = self._pump.source
         error = getattr(source, "last_write_error", None)
         accepted = getattr(source, "last_write_ok", False)
+        address = getattr(source, "last_write_address", None)
+        if address in RAM_WRITE_ADDRESSES:
+            self.calibration.set_write_status(error, accepted)
+            return
+        if address in EEPROM_WRITE_ADDRESSES:
+            self.calibration.set_write_status(error, accepted, kind="eeprom")
+            return
         if error:
             self.faults.set_command_status(error, False)
             self._clear_pending = False
@@ -388,6 +416,75 @@ class MainWindow(QMainWindow):
         self._clear_pending = True
         self.faults.set_command_status("Sending clear command…", True)
 
+    def _calibration_ram_write(self, address: int, value: int) -> None:
+        if address not in RAM_WRITE_ADDRESSES:
+            QMessageBox.warning(
+                self,
+                "Write blocked",
+                f"0x{address:04X} is not on the RAM allow-list (Delay Command, Gamma Adjust).",
+            )
+            return
+        if self._pump is None or self.source.currentText() != "RS232":
+            QMessageBox.information(
+                self,
+                "RS232 not running",
+                "Start RS232 first. Delay and Gamma RAM writes use Memory View wm.",
+            )
+            return
+        source = self._pump.source
+        if not hasattr(source, "enqueue_write"):
+            QMessageBox.information(self, "Cannot write", "This source cannot send Memory View writes.")
+            return
+        snapshot = self.store.snapshot()
+        reading = read_calibration(snapshot)
+        blocked = write_blocked_reason(reading.vsm, reading.enable, reading.inverter_mode)
+        if blocked:
+            QMessageBox.warning(self, "Write blocked", blocked)
+            return
+        source.enqueue_write(address, value)
+        self.calibration.note_write(address, value)
+
+    def _calibration_eeprom_commit(self) -> None:
+        if self._pump is None or self.source.currentText() != "RS232":
+            QMessageBox.information(
+                self,
+                "RS232 not running",
+                "Start RS232 first.",
+            )
+            return
+        source = self._pump.source
+        if not hasattr(source, "enqueue_write"):
+            QMessageBox.information(self, "Cannot write", "This source cannot send Memory View writes.")
+            return
+        snapshot = self.store.snapshot()
+        reading = read_calibration(snapshot)
+        blocked = write_blocked_reason(
+            reading.vsm, reading.enable, reading.inverter_mode, kind="eeprom"
+        )
+        if blocked:
+            QMessageBox.warning(self, "Write blocked", blocked)
+            return
+        if reading.delay_command is None or reading.gamma_adjust_x10 is None:
+            QMessageBox.information(
+                self,
+                "Still reading",
+                "Need Delay and Gamma first.",
+            )
+            return
+        delay = reading.delay_command
+        gamma = reading.gamma_adjust_x10
+        answer = QMessageBox.question(
+            self,
+            "Program EEPROM?",
+            f"Save Delay {delay} and Gamma {gamma} ({gamma / 10:.1f}°) to EEPROM?\n\n"
+            "After: Recycle Power → off 20–30 s → on.",
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        for address, value in eeprom_persist_writes(delay, gamma):
+            source.enqueue_write(address, value)
+            self.calibration.note_write(address, value)
+
     def _pull_eeprom(self) -> None:
         if self._pump is None or self.source.currentText() != "RS232":
             QMessageBox.information(
@@ -402,12 +499,14 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "About",
-            "Read-only monitor for Cascadia / Rinehart PM100DX inverters.\n\n"
+            "Live monitor for Cascadia / Rinehart PM100DX inverters.\n\n"
             "Pick one live source:\n"
             "• RS232 — poll watched symbols with rm; EEPROM dumps once on connect\n"
-            "• CAN — subscribe-only python-can (socketcan, PCAN, slcan, …)\n\n"
+            "• CAN — subscribe-only\n\n"
             "Symbols is a personal Memory View watch list; other tabs poll on their own.\n"
             "EEPROM loads once on RS232 connect (Pull from inverter to reload).\n"
+            "Calibration iterates Delay Command and Gamma Adjust in RAM. "
+            "Program EEPROM is optional, last, and only from that tab.\n"
             "VSM state is on CAN M170 or RS232 address 0x0093.",
         )
 

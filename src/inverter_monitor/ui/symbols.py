@@ -24,7 +24,7 @@ from inverter_monitor.memory_map import (
 )
 from inverter_monitor.store import StoreSnapshot
 from inverter_monitor.ui.symbol_widgets import GroupedSymbolTree, symbol_value_texts
-from inverter_monitor.ui.theme import mono_font
+from inverter_monitor.ui.theme import PAGE_MARGINS, mono_font
 
 _ADDR_ROLE = Qt.ItemDataRole.UserRole
 
@@ -46,14 +46,11 @@ class SymbolsPage(QWidget):
         self._live = live_symbols(catalog.memory_symbols)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search live symbols…")
+        self.search.setPlaceholderText("Search…")
         self.search.setClearButtonEnabled(True)
         self.add_btn = QPushButton("Add to watch")
         self.remove_btn = QPushButton("Remove")
         self.reload_btn = QPushButton("Reload default list")
-        self.reload_btn.setToolTip(
-            "Replace this list with the default Overview / status addresses."
-        )
 
         self.catalog_tree = GroupedSymbolTree()
         self.catalog_tree.set_symbols(self._live, LIVE_GROUP_ORDER)
@@ -69,13 +66,6 @@ class SymbolsPage(QWidget):
         self.watch_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.watch_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
-        self.hint = QLabel(
-            "Live Memory View symbols, grouped like RMS GUI (Resolver, CAN-adjacent VSM/IO, "
-            "thermal, …). This list is what you watch by hand — other tabs poll their own "
-            "addresses in the background. EEPROM is on its own tab and is read once on connect."
-        )
-        self.hint.setObjectName("muted")
-        self.hint.setWordWrap(True)
         self.match_count = QLabel("")
         self.match_count.setObjectName("muted")
 
@@ -85,6 +75,7 @@ class SymbolsPage(QWidget):
         tools.addWidget(self.match_count)
 
         catalog_box = QVBoxLayout()
+        catalog_box.setContentsMargins(0, 0, 0, 0)
         catalog_heading = QLabel("Catalog")
         catalog_heading.setObjectName("muted")
         catalog_box.addWidget(catalog_heading)
@@ -95,6 +86,7 @@ class SymbolsPage(QWidget):
         catalog_wrap.setLayout(catalog_box)
 
         watch_box = QVBoxLayout()
+        watch_box.setContentsMargins(0, 0, 0, 0)
         watch_heading = QLabel("Watch list")
         watch_heading.setObjectName("muted")
         watch_box.addWidget(watch_heading)
@@ -113,8 +105,7 @@ class SymbolsPage(QWidget):
         splitter.setStretchFactor(1, 2)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 8, 0, 0)
-        root.addWidget(self.hint)
+        root.setContentsMargins(*PAGE_MARGINS)
         root.addWidget(splitter, 1)
 
         self.search.textChanged.connect(self._refresh_catalog)

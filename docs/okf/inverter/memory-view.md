@@ -8,7 +8,7 @@ generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:
   - id: memview-captures
     resource: ../../rms-gui-memory-view.md
-    title: RMS GUI Memory View protocol notes (USBPcap yuh/yuh2/yuh3 via ADAM-4562)
+    title: RMS GUI Memory View protocol notes (USBPcap yuh/yuh2/yuh3/yuh4 via ADAM-4562)
   - id: sw-manual
     resource: ../../Source Documentation/Software User Manual (V3_6) For Inverter.pdf
     title: Cascadia Motion Software User Manual Rev 3.6 (2021-01-14)
@@ -22,7 +22,7 @@ GUI). Addresses are the `defsyms` map ([EEPROM guide](eeprom.md),
 `data/defsyms.yaml`). Derived from USBPcap of RMS GUI on Windows 10 through
 an ADAM-4562 (Prolific PL2303): `yuh.pcapng` (connect + default poll),
 `yuh2.pcapng` (watch add/remove), `yuh3.pcapng` (RAM write + EEPROM
-commit).[^memview-captures]
+commit), `yuh4 (1).pcapng` (Memory Values Gamma −8/−10).[^memview-captures]
 
 ## Framing
 
@@ -100,7 +100,7 @@ End-of-capture loop: `0x0050, 0x0058, 0x0057, 0x005A, 0x0059, 0x0099, 0x0098,
 are VSM 0x0093, enable 0x0094, mode 0x0092, and the four fault words above
 (EEPROM symbols are snapshot/one-shot, never polled).[^memview-captures]
 
-## Writes (yuh2, yuh3 findings)
+## Writes (yuh2, yuh3, yuh4 findings)
 
 Recorded so watch traffic is never confused with write traffic.
 
@@ -108,23 +108,31 @@ Recorded so watch traffic is never confused with write traffic.
   address. yuh2: `wm0002=0000` twice (`0x0002` unmapped in defsyms, readback
   0, never joined the loop). yuh3: `wm0117=0000` ×5 (`DC_UnderVolt_Thresh`,
   already 0) then `wm0117=0005` — readback became 5 (0.5 V at ×10), a **RAM
-  only** change.[^memview-captures]
+  only** change. `Gamma_Adjust_EEPROM` stayed `0xFFF8` (−8) the whole session;
+  RAM Gamma Adjust `0x0010` was never polled or written in yuh3.[^memview-captures]
+* **yuh4 (1)**: ADAM/Prolific bulk OUT ep2 / IN ep3, ~81 s, 5 `wm` / 5 `RAE`.
+  Memory Values Gamma Adjust `0x0010`: `fff8` (−8) twice, `fff6` (−10) twice,
+  `fff8` (−8) once. Readback matched. EEPROM dump at start: gamma EEPROM −8,
+  delay EEPROM 50, DC undervolt 0, `EEprom_State` 5. No `wm0000`/`wm0001`, no
+  VSM/enable poll (Memory Values tab). Original `yuh4.pcapng` is still USB
+  mass-storage `USBC`/`USBS` — ignore it.[^memview-captures]
 * **EEPROM commit**: `wm0000=5a0f` → `RAE`, `wm0001=0059` → `RAE`, then
-  `EEprom_State` (0x0056) 5→7. `0x5A0F`/`0x0059` look like a save/unlock pair,
-  not user parameters; several EEPROM reads then returned **zero** (serial
-  `0x0113` went `0x0665`→0, `0x0117` back to 0) and the capture ends at state
-  7 — treat as busy/reload, **not** a known-good flash sequence.[^memview-captures]
+  `EEprom_State` (0x0056) 5→7. Immediately afterwards **every** EEPROM read
+  returned zero (serial `0x0113` `0x0665`→0, gamma EEPROM −8→0, `0x0117` 5→0).
+  Capture ended at state 7. That 5→0 on DC undervolt is the same blank-read
+  window, not a confirmed “program 0 and it stuck”. yuh3 never `rm`’d VSM
+  `0x0093` / enable `0x0094` (EEPROM-tab dump only). Treat zeros while state
+  is 7 as busy, not as a wipe.[^memview-captures]
 
 ## What the monitor sends
 
 * `rm` polls for the watch list + one-shot EEPROM/info dump (above).
-* The **only** `wm` the monitor sends is **Clear Faults**: `wm0002=0000`
-  (`CLEAR_FAULTS_ADDRESS`, the GUI command slot just before `Run_Command`
-  0x0003), issued from the Faults tab behind a confirmation dialog (plus an
-  inverter-disabled check in CAN mode), with `RAE` consumed off the shared
-  buffer and errors surfaced (`last_write_error`).[^memview-captures]
-* Never sent: `wm0000`/`wm0001` commit pair, `wm0117`-style parameter edits,
-  or any other EEPROM write.[^memview-captures]
+* `wm` is queued through `enqueue_write` and waits for `RAE`. Allowed today:
+  **Clear Faults** `wm0002=0000` (Faults tab, confirmed); Calibration-tab RAM
+  writes of `Resolver_Delay_Command` (`0x0005`) and `Gamma_Adjust_(Deg)_x_10`
+  (`0x0010`); Calibration **Program EEPROM** copies those Memory Values into
+  `0x0118` / `0x011A` then the yuh3 pair `wm0000=5a0f` / `wm0001=0059` (Wait,
+  enable off, confirm). Other EEPROM parameters are not written.[^memview-captures]
 
 ## SCI vs Memory View
 

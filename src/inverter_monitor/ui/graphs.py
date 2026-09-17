@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from html import escape
 
 import pyqtgraph as pg
-from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -28,7 +29,7 @@ from inverter_monitor.catalog import (
     graphable_keys,
 )
 from inverter_monitor.store import StoreSnapshot, first_signal
-from inverter_monitor.ui.theme import BG, TEXT
+from inverter_monitor.ui.theme import BG, DIM, PAGE_MARGINS, TEXT
 
 
 COLORS = [
@@ -45,6 +46,49 @@ COLORS = [
 
 def graph_signal_label(key: str) -> str:
     return key.split(".", 1)[-1]
+
+
+def nearest_sample(
+    points: Sequence[tuple[float, float]],
+    t: float,
+) -> tuple[float, float] | None:
+    if not points:
+        return None
+    return min(points, key=lambda point: abs(point[0] - t))
+
+
+def format_graph_number(value: float) -> str:
+    digits = 1 if abs(value) >= 10 else 2
+    return f"{value:.{digits}f}"
+
+
+def hover_rows(
+    series: Iterable[tuple[str, Sequence[tuple[float, float]], str]],
+    t: float,
+) -> list[tuple[str, str, str]]:
+    rows: list[tuple[str, str, str]] = []
+    for name, points, color in series:
+        sample = nearest_sample(points, t)
+        if sample is None:
+            continue
+        rows.append((name, format_graph_number(sample[1]), color))
+    return rows
+
+
+def format_hover_html(t: float, rows: Sequence[tuple[str, str, str]]) -> str:
+    parts = [
+        f'<div style="color:{TEXT}">',
+        f'<div style="color:{DIM};margin-bottom:4px">{t:.2f} s</div>',
+    ]
+    for name, value, color in rows:
+        parts.append(
+            "<div>"
+            f'<span style="color:{color}">●</span> {escape(name)}'
+            f'&nbsp;&nbsp;<b>{escape(value)}</b>'
+            "</div>"
+        )
+    parts.append("</div>")
+    return "".join(parts)
 
 
 def graph_signal_matches(key: str, query: str) -> bool:
@@ -313,11 +357,42 @@ class GraphsPage(QWidget):
         self._buffers: dict[str, deque[tuple[float, float]]] = {}
         self._curves: dict[str, pg.PlotDataItem] = {}
         self._t0: float | None = None
+        self._hover_t: float | None = None
 
         self.plot = pg.PlotWidget()
         self.plot.showGrid(x=True, y=True, alpha=0.2)
         self.plot.addLegend()
         self.plot.setLabel("bottom", "time", units="s")
+        self.plot.setCursor(Qt.CursorShape.CrossCursor)
+        self._cursor = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=pg.mkPen(DIM, width=1, style=Qt.PenStyle.DashLine),
+        )
+        self._cursor.setVisible(False)
+        self._cursor.setZValue(10)
+        self.plot.addItem(self._cursor, ignoreBounds=True)
+        self._hover_dots = pg.ScatterPlotItem(
+            size=9,
+            pxMode=True,
+            pen=pg.mkPen(TEXT, width=1),
+        )
+        self._hover_dots.setZValue(11)
+        self.plot.addItem(self._hover_dots, ignoreBounds=True)
+
+        self.hover_label = QLabel(self.plot.viewport())
+        self.hover_label.setObjectName("graphHover")
+        self.hover_label.setTextFormat(Qt.TextFormat.RichText)
+        self.hover_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.hover_label.hide()
+
+        self._mouse_proxy = pg.SignalProxy(
+            self.plot.scene().sigMouseMoved,
+            rateLimit=40,
+            slot=self._on_mouse_moved,
+        )
+        self.plot.installEventFilter(self)
+        self.plot.viewport().installEventFilter(self)
 
         self.window = QComboBox()
         self.window.addItems(["10 s", "30 s", "60 s"])
@@ -347,7 +422,7 @@ class GraphsPage(QWidget):
         splitter.setSizes([480, 240])
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 8, 0, 0)
+        root.setContentsMargins(*PAGE_MARGINS)
         root.addWidget(splitter)
 
     def selected_keys(self) -> list[str]:
@@ -391,3 +466,61 @@ class GraphsPage(QWidget):
                 self._curves[key] = self.plot.plot(pen=pg.mkPen(color, width=2), name=name)
             self._curves[key].setData(xs, ys)
         self.plot.setXRange(max(0.0, t - window), max(window, t), padding=0)
+        if self._hover_t is not None:
+            self.hover_at(self._hover_t)
+
+    def eventFilter(self, watched, event) -> bool:  # noqa: N802
+        if watched in (self.plot, self.plot.viewport()) and event.type() == QEvent.Type.Leave:
+            self.hover_at(None)
+        return super().eventFilter(watched, event)
+
+    def _on_mouse_moved(self, event) -> None:
+        pos = event[0]
+        view_box = self.plot.getViewBox()
+        if not view_box.sceneBoundingRect().contains(pos):
+            self.hover_at(None)
+            return
+        self.hover_at(float(view_box.mapSceneToView(pos).x()))
+
+    def hover_at(self, t: float | None) -> None:
+        self._hover_t = t
+        if t is None:
+            self._cursor.setVisible(False)
+            self._hover_dots.clear()
+            self.hover_label.hide()
+            return
+        selected = self.selected_keys()
+        series: list[tuple[str, Sequence[tuple[float, float]], str]] = []
+        spots: list[dict] = []
+        for index, key in enumerate(selected):
+            buf = self._buffers.get(key)
+            if not buf:
+                continue
+            color = COLORS[index % len(COLORS)]
+            series.append((graph_signal_label(key), buf, color))
+            sample = nearest_sample(buf, t)
+            if sample is not None:
+                spots.append({"pos": (t, sample[1]), "brush": color})
+        rows = hover_rows(series, t)
+        self._cursor.setPos(t)
+        self._cursor.setVisible(True)
+        if spots:
+            self._hover_dots.setData(spots)
+        else:
+            self._hover_dots.clear()
+        self.hover_label.setText(format_hover_html(t, rows))
+        self.hover_label.adjustSize()
+        self._place_hover_label()
+        self.hover_label.show()
+        self.hover_label.raise_()
+
+    def _place_hover_label(self) -> None:
+        view_box = self.plot.getViewBox()
+        plot_rect = self.plot.mapFromScene(view_box.sceneBoundingRect()).boundingRect()
+        top_left = self.plot.viewport().mapFrom(self.plot, plot_rect.topLeft())
+        bottom_right = self.plot.viewport().mapFrom(self.plot, plot_rect.bottomRight())
+        rect = QRect(top_left, bottom_right)
+        hint = self.hover_label.sizeHint()
+        x = rect.right() - hint.width() - 8
+        y = rect.top() + 8
+        self.hover_label.move(max(rect.left() + 8, x), max(rect.top() + 8, y))

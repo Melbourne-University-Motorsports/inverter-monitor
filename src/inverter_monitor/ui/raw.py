@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from inverter_monitor.store import StoreSnapshot
-from inverter_monitor.ui.theme import mono_font
+from inverter_monitor.ui.theme import PAGE_MARGINS, mono_font
 
 
 class RawPage(QWidget):
@@ -17,7 +17,7 @@ class RawPage(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setFont(mono_font(12))
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 8, 0, 0)
+        root.setContentsMargins(*PAGE_MARGINS)
         root.addWidget(self.table)
 
     def update_from(self, snapshot: StoreSnapshot) -> None:

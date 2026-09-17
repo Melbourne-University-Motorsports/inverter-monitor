@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 
 from inverter_monitor.catalog import CAN_COMMAND_MODE, Catalog, mode_label
 from inverter_monitor.store import StoreSnapshot, command_mode, first_signal
-from inverter_monitor.ui.theme import vsm_color
+from inverter_monitor.ui.theme import PAGE_MARGINS, vsm_color
 
 
 class StatesPage(QWidget):
@@ -30,14 +30,15 @@ class StatesPage(QWidget):
         self.detail.setReadOnly(True)
 
         vsm_box = QVBoxLayout()
+        vsm_box.setContentsMargins(0, 0, 0, 0)
         vsm_box.addWidget(QLabel("Vehicle State Machine"))
         vsm_box.addWidget(self.vsm_table)
         vsm_wrap = QWidget()
         vsm_wrap.setLayout(vsm_box)
 
         inv_box = QVBoxLayout()
+        inv_box.setContentsMargins(0, 0, 0, 0)
         inv_box.addWidget(QLabel("Inverter mode"))
-        inv_box.addWidget(self.inv_table)
         inv_wrap = QWidget()
         inv_wrap.setLayout(inv_box)
 
@@ -52,7 +53,7 @@ class StatesPage(QWidget):
         splitter.setStretchFactor(1, 2)
 
         root = QHBoxLayout(self)
-        root.setContentsMargins(0, 8, 0, 0)
+        root.setContentsMargins(*PAGE_MARGINS)
         root.addWidget(splitter)
 
         self.vsm_table.itemSelectionChanged.connect(self._show_selected)

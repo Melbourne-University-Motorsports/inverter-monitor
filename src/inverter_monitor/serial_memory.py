@@ -11,17 +11,24 @@ from inverter_monitor.memory_map import (
     read_command,
     write_command,
 )
-from inverter_monitor.serial_sci import SCI_BAUD
-from inverter_monitor.transport import CanFrame
+from inverter_monitor.serial_sci import (
+    SCI_BAUD,
+    close_serial,
+    interrupt_serial,
+    read_waiting,
+    write_serial,
+)
+from inverter_monitor.transport import CanFrame, SourceLost
 
 
 class SerialMemoryViewSource:
-    """Poll Memory View with `rm`. Clear Faults is the only `wm` this source sends."""
+    """Poll Memory View with `rm`. `wm` is queued: Clear Faults, Calibration RAM, EEPROM persist."""
 
     def __init__(self, port: str, poller: MemoryPoller, baud: int = SCI_BAUD) -> None:
         import serial
 
         self.label = f"rs232:{port}@{baud}"
+        self._port = port
         self._poller = poller
         self._serial = serial.Serial(
             port=port,
@@ -39,6 +46,7 @@ class SerialMemoryViewSource:
         self._writes: queue.SimpleQueue[tuple[int, int]] = queue.SimpleQueue()
         self.last_write_error: str | None = None
         self.last_write_ok = False
+        self.last_write_address: int | None = None
 
     def enqueue_write(self, address: int, value: int) -> None:
         self._writes.put((int(address), int(value) & 0xFFFF))
@@ -50,14 +58,15 @@ class SerialMemoryViewSource:
             time.sleep(min(timeout, 0.05))
             return None
         try:
-            self._serial.write(read_command(address))
+            write_serial(self._serial, read_command(address), name=self._port)
+        except SourceLost:
+            raise
         except Exception:
             time.sleep(min(timeout, 0.05))
             return None
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            waiting = self._serial.in_waiting
-            chunk = self._serial.read(waiting or 1)
+            chunk = read_waiting(self._serial, name=self._port)
             if chunk:
                 self._buf += chunk
             while b"\n" in self._buf:
@@ -72,6 +81,7 @@ class SerialMemoryViewSource:
                     arbitration_id=MEMORY_FRAME_ID,
                     data=pack_memory_frame(reply_addr, raw),
                 )
+            time.sleep(0.005)
         return None
 
     def _flush_write(self) -> None:
@@ -79,24 +89,27 @@ class SerialMemoryViewSource:
             address, value = self._writes.get_nowait()
         except queue.Empty:
             return
+        self.last_write_address = address
         try:
-            self._serial.write(write_command(address, value))
+            write_serial(self._serial, write_command(address, value), name=self._port)
+        except SourceLost:
+            raise
         except Exception as exc:
             self.last_write_ok = False
             self.last_write_error = str(exc)
             return
         deadline = time.monotonic() + 0.3
         while time.monotonic() < deadline:
-            waiting = self._serial.in_waiting
-            chunk = self._serial.read(waiting or 1)
+            chunk = read_waiting(self._serial, name=self._port)
             if chunk:
                 self._buf += chunk
             if self._consume_rae():
                 self.last_write_ok = True
                 self.last_write_error = None
                 return
+            time.sleep(0.005)
         self.last_write_ok = False
-        self.last_write_error = "No RAE from inverter after Clear Faults write."
+        self.last_write_error = f"No RAE from inverter after write to 0x{address:04X}."
 
     def _consume_rae(self) -> bool:
         index = self._buf.find(b"RAE")
@@ -105,5 +118,8 @@ class SerialMemoryViewSource:
         self._buf = self._buf[index + 3 :].lstrip(b"\r\n")
         return True
 
+    def interrupt(self) -> None:
+        interrupt_serial(self._serial)
+
     def close(self) -> None:
-        self._serial.close()
+        close_serial(self._serial)

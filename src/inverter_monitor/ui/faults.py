@@ -24,9 +24,11 @@ from inverter_monitor.store import StoreSnapshot, get_signal
 from inverter_monitor.ui.theme import (
     ACCENT,
     BORDER,
+    CARD_MARGINS,
     DIM,
     FAULT,
     OK,
+    PAGE_MARGINS,
     PANEL_ALT,
     TEXT,
     WARN,
@@ -78,7 +80,6 @@ class FaultBitMap(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumHeight(_ROW_H * 2 + 8)
         self.setMinimumWidth(_LABEL_W + 32 * (_BIT_SIZE + _BIT_GAP) + _BANK_GAP + _HEX_W)
-        self.setToolTip("POST bits 0–31, RUN bits 32–63. Click a cell for the name.")
 
     def set_state(self, active: set[int] | frozenset[int], selected: int | None) -> None:
         next_active = frozenset(active)
@@ -168,7 +169,7 @@ class FaultBitMap(QWidget):
             latch = " · latching" if spec.latching else ""
             self.setToolTip(f"{_bank(spec)} bit {spec.bit}  {spec.name}{latch}{extra}")
         else:
-            self.setToolTip("POST bits 0–31, RUN bits 32–63. Click a cell for the name.")
+            self.setToolTip("")
         self.update()
 
     def leaveEvent(self, event) -> None:  # noqa: ANN001
@@ -192,7 +193,7 @@ class FaultsPage(QWidget):
         self.headline = QLabel("NO DATA")
         self.headline.setObjectName("faultHeadline")
         set_tone(self.headline, "dim")
-        self.counts = QLabel("Connect a source — fault words update live.")
+        self.counts = QLabel("")
         self.counts.setObjectName("muted")
         self.counts.setWordWrap(True)
 
@@ -201,13 +202,11 @@ class FaultsPage(QWidget):
         set_tone(self.live_label, "ok")
         self.auto_refresh = QCheckBox("Auto-refresh")
         self.auto_refresh.setChecked(True)
-        self.auto_refresh.setToolTip("On: follow the inverter. Off: freeze this page.")
         self.refresh_btn = QPushButton("Refresh")
         self.refresh_btn.setVisible(False)
         self.clear_btn = QPushButton("Clear faults")
         self.clear_btn.setObjectName("danger")
         self.clear_btn.setEnabled(False)
-        self.clear_btn.setToolTip("Send Clear Faults Command (value 0). Confirm in the dialog.")
         self.command_status = QLabel("")
         set_tone(self.command_status, "dim")
 
@@ -227,10 +226,7 @@ class FaultsPage(QWidget):
         self.bitmap = FaultBitMap(catalog)
         map_card = Card()
         map_layout = QVBoxLayout(map_card)
-        map_layout.setContentsMargins(14, 10, 14, 10)
-        map_hint = QLabel("POST 0–31  RUN 32–63")
-        map_hint.setObjectName("muted")
-        map_layout.addWidget(map_hint)
+        map_layout.setContentsMargins(*CARD_MARGINS)
         map_layout.addWidget(self.bitmap)
         map_layout.addWidget(self.command_status)
 
@@ -252,7 +248,6 @@ class FaultsPage(QWidget):
 
         self.detail = QTextEdit()
         self.detail.setReadOnly(True)
-        self.detail.setPlaceholderText("Select a bit or an active fault.")
         self.detail.setMaximumHeight(120)
 
         self.history = QTableWidget(0, 3)
@@ -266,6 +261,7 @@ class FaultsPage(QWidget):
         self.history.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         left = QVBoxLayout()
+        left.setContentsMargins(0, 0, 0, 0)
         active_title = QLabel("Active")
         active_title.setObjectName("muted")
         left.addWidget(active_title)
@@ -276,6 +272,7 @@ class FaultsPage(QWidget):
         left_wrap.setLayout(left)
 
         right = QVBoxLayout()
+        right.setContentsMargins(0, 0, 0, 0)
         hist_title = QLabel("History")
         hist_title.setObjectName("muted")
         right.addWidget(hist_title)
@@ -290,7 +287,7 @@ class FaultsPage(QWidget):
         splitter.setStretchFactor(1, 2)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 8, 0, 0)
+        root.setContentsMargins(*PAGE_MARGINS)
         root.addLayout(head)
         root.addWidget(map_card)
         root.addWidget(splitter, 1)
@@ -304,8 +301,6 @@ class FaultsPage(QWidget):
     def set_connected(self, connected: bool) -> None:
         self._connected = connected
         self.clear_btn.setEnabled(connected)
-        if not connected and not self.command_status.text():
-            self.command_status.setText("Start a source to clear faults.")
 
     def set_command_status(self, text: str, ok: bool = True) -> None:
         self.command_status.setText(text)
@@ -335,11 +330,11 @@ class FaultsPage(QWidget):
         if not has_feed and not faults:
             self.headline.setText("NO DATA")
             set_tone(self.headline, "dim")
-            self.counts.setText("Waiting for M171 or RS232 fault words.")
+            self.counts.setText("")
         elif not faults:
             self.headline.setText("ALL CLEAR")
             set_tone(self.headline, "ok")
-            self.counts.setText("POST and RUN words are zero.")
+            self.counts.setText("")
         else:
             label = "1 FAULT" if len(faults) == 1 else f"{len(faults)} FAULTS"
             self.headline.setText(label)

@@ -19,6 +19,7 @@ from inverter_monitor.store import (
     get_signal,
     mechanical_power_kw,
 )
+from inverter_monitor.ui.theme import CARD_MARGINS, PAGE_MARGINS
 from inverter_monitor.ui.widgets import Card, FlagChip, MetricCard
 
 # CAN M170 packed bits with no dedicated Memory View bool. Hide on RS232.
@@ -67,6 +68,7 @@ class OverviewPage(QWidget):
         self.power = MetricCard("Mech. power")
 
         grid = QGridLayout()
+        grid.setSpacing(8)
         items = self.cards + [self.power]
         for index, card in enumerate(items):
             grid.addWidget(card, index // 3, index % 3)
@@ -89,6 +91,8 @@ class OverviewPage(QWidget):
         self.dins.setObjectName("muted")
 
         left = QVBoxLayout()
+        left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(8)
         left.addLayout(grid)
         left.addLayout(flag_row)
         left.addWidget(self.relays)
@@ -99,9 +103,9 @@ class OverviewPage(QWidget):
 
         self.detail = QTextEdit()
         self.detail.setReadOnly(True)
-        self.detail.setPlaceholderText("VSM description")
         detail_card = Card()
         detail_layout = QVBoxLayout(detail_card)
+        detail_layout.setContentsMargins(*CARD_MARGINS)
         heading = QLabel("Current VSM")
         heading.setObjectName("muted")
         detail_layout.addWidget(heading)
@@ -114,7 +118,7 @@ class OverviewPage(QWidget):
         splitter.setStretchFactor(1, 2)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 8, 0, 0)
+        root.setContentsMargins(*PAGE_MARGINS)
         root.addWidget(splitter)
 
     def update_from(self, snapshot: StoreSnapshot, source: str = "RS232") -> None:
@@ -163,9 +167,7 @@ class OverviewPage(QWidget):
             "MemoryView.VSM_State",
         )
         if vsm is None or vsm.raw is None:
-            self.detail.setPlainText(
-                "Waiting for VSM_State (CAN M170 or RS232 0x0093)."
-            )
+            self.detail.setPlainText("Waiting for VSM")
             return
         state = self._catalog.vsm_states.get(int(vsm.raw))
         if state is None:
