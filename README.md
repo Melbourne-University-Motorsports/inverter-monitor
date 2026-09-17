@@ -7,18 +7,6 @@ Live monitor for Cascadia / Rinehart PM100DZ inverters over **RS232**.
 Install [`uv`](https://docs.astral.sh/uv/), then:
 
 ```bash
-# macOS
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# or: brew install uv
-```
-
-```powershell
-# Windows
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-# or: winget install --id=astral-sh.uv -e
-```
-
-```bash
 uv run inverter-monitor
 ```
 
