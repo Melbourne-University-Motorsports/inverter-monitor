@@ -4,11 +4,22 @@ Live monitor for Cascadia / Rinehart PM100DZ inverters over **RS232**.
 
 ## Quick start
 
-Install [`uv`](https://docs.astral.sh/uv/), then:
+Install:
+
+- [PL2303 Serial](https://apps.apple.com/us/app/pl2303-serial/id1624835354?mt=12) — macOS / ADAM-4562 (App Store, macOS 11+)
+- [`uv`](https://docs.astral.sh/uv/)
+
+Then from this folder:
 
 ```bash
-uv run inverter-monitor
+./run.sh
 ```
+
+```bat
+run.cmd
+```
+
+Or `uv run inverter-monitor`. First run downloads Python and dependencies.
 
 ## Serial
 
@@ -25,7 +36,7 @@ Isolated USB–RS232 (Prolific PL2303), not CAN. Advantech drivers are Windows a
 |----|--|
 | Windows 10 | Advantech/Prolific VCP → `COMx` |
 | Linux | kernel `pl2303` → `/dev/ttyUSB*` |
-| macOS | No official driver. [PL2303 Serial](https://apps.apple.com/us/app/pl2303-serial/id1624835354?mt=12) may enumerate `/dev/cu.PL2303*` / `/dev/cu.usbserial*`. Counterfeit chips and Apple Silicon often fail. Prefer Windows 10 for RS232. |
+| macOS | [PL2303 Serial](https://apps.apple.com/us/app/pl2303-serial/id1624835354?mt=12). Counterfeit chips and Apple Silicon often fail. |
 
 ## Without uv
 
