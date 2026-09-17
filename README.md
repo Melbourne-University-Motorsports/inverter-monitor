@@ -1,6 +1,6 @@
-# PM100DX Inverter Monitor
+# Rinehart Inverter Monitor
 
-Read-only live monitor for Cascadia / Rinehart PM100DX inverters.
+Read-only live monitor for Cascadia / Rinehart PM100DZ inverters.
 
 Pick **one** live source: **RS232** or **CAN**. The window does not auto-connect.
 Use the Source menu, or pass `--serial` / `--can`.
