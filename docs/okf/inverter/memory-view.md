@@ -132,7 +132,9 @@ Recorded so watch traffic is never confused with write traffic.
   writes of `Resolver_Delay_Command` (`0x0005`) and `Gamma_Adjust_(Deg)_x_10`
   (`0x0010`); Calibration **Program EEPROM** copies those Memory Values into
   `0x0118` / `0x011A` then the yuh3 pair `wm0000=5a0f` / `wm0001=0059` (Wait,
-  enable off, confirm). Other EEPROM parameters are not written.[^memview-captures]
+  enable off, confirm); and EEPROM-tab **Push to inverter**, which writes each
+  edited EEPROM word the same way then the same commit pair (Wait, enable off,
+  change-list confirm, per-word progress). Other Memory View words are not written.[^memview-captures]
 
 ## SCI vs Memory View
 

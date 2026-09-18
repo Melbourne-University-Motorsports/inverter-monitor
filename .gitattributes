@@ -1,0 +1,7 @@
+# Keep Unix launchers as LF so macOS bash can exec them from a Windows checkout.
+run.sh text eol=lf
+run.command text eol=lf
+*.sh text eol=lf
+*.command text eol=lf
+*.cmd text eol=crlf
+run.cmd text eol=crlf

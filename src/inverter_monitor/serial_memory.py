@@ -22,7 +22,13 @@ from inverter_monitor.transport import CanFrame, SourceLost
 
 
 class SerialMemoryViewSource:
-    """Poll Memory View with `rm`. `wm` is queued: Clear Faults, Calibration RAM, EEPROM persist."""
+    """Poll Memory View with `rm`.
+
+    `wm` is queued one at a time: Clear Faults, Calibration RAM writes, and
+    EEPROM words (Calibration shadows or EEPROM-page edits), each waiting for
+    `RAE`. EEPROM words persist only after the commit pair
+    `wm0000=5a0f` / `wm0001=0059`.
+    """
 
     def __init__(self, port: str, poller: MemoryPoller, baud: int = SCI_BAUD) -> None:
         import serial

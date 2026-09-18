@@ -13,3 +13,8 @@ if errorlevel 1 (
 )
 echo Starting inverter-monitor (first run may take a minute)...
 uv run inverter-monitor %*
+if errorlevel 1 (
+  echo.
+  echo The monitor did not start.
+  pause
+)

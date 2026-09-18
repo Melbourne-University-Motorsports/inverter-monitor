@@ -5,6 +5,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 from inverter_monitor.catalog import load_catalog
+from inverter_monitor.calibration import EEPROM_STATE_ADDRESS
 from inverter_monitor.cli import build_parser
 from inverter_monitor.decode import Decoder
 from inverter_monitor.memory_map import (
@@ -264,7 +265,7 @@ def test_tab_poll_set_preserves_symbols_watch_list():
 
     window.tabs.setCurrentWidget(window.eeprom)
     app.processEvents()
-    assert window.poller.poll_addresses() == STATUS_WATCH_ADDRESSES
+    assert window.poller.poll_addresses() == (*STATUS_WATCH_ADDRESSES, EEPROM_STATE_ADDRESS)
 
     window.tabs.setCurrentWidget(window.calibration)
     app.processEvents()

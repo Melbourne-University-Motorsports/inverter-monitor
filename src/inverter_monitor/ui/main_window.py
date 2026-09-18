@@ -18,6 +18,9 @@ from PySide6.QtWidgets import (
 )
 
 from inverter_monitor.calibration import (
+    EEPROM_COMMIT_COMMAND,
+    EEPROM_COMMIT_UNLOCK,
+    EEPROM_STATE_ADDRESS,
     EEPROM_WRITE_ADDRESSES,
     RAM_WRITE_ADDRESSES,
     eeprom_persist_writes,
@@ -40,7 +43,12 @@ from inverter_monitor.serial_sci import SCI_BAUD, list_serial_ports
 from inverter_monitor.store import InverterStore, first_signal, get_signal
 from inverter_monitor.transport import FramePump, LiveCanSource
 from inverter_monitor.ui.calibration import CalibrationPage
-from inverter_monitor.ui.eeprom import EepromPage
+from inverter_monitor.ui.eeprom import (
+    EepromPage,
+    EepromPushDialog,
+    EepromPushStep,
+    describe_word,
+)
 from inverter_monitor.ui.faults import FaultsPage
 from inverter_monitor.ui.graphs import GraphsPage
 from inverter_monitor.ui.overview import OverviewPage
@@ -136,6 +144,16 @@ class MainWindow(QMainWindow):
         self.symbols = SymbolsPage(catalog, self.watch_list)
         self.eeprom = EepromPage(catalog)
         self.eeprom.pull_requested.connect(self._pull_eeprom)
+        self.eeprom.push_requested.connect(self._push_eeprom)
+        self.eeprom.single_read_requested.connect(self._single_read_eeprom)
+        self._push_active = False
+        self._push_cancelled = False
+        self._push_remaining: list[tuple[int, int]] = []
+        self._push_head: tuple[int, int] | None = None
+        self._push_head_sig: tuple[bool, str | None] | None = None
+        self._push_results: dict[int, bool] = {}
+        self._push_errors: dict[int, str] = {}
+        self._push_dialog: EepromPushDialog | None = None
         self.calibration = CalibrationPage()
         self.calibration.ram_write_requested.connect(self._calibration_ram_write)
         self.calibration.eeprom_commit_requested.connect(self._calibration_eeprom_commit)
@@ -244,8 +262,10 @@ class MainWindow(QMainWindow):
             addresses = (*STATUS_WATCH_ADDRESSES, *self.graphs.poll_addresses())
         elif current is self.calibration:
             addresses = (*STATUS_WATCH_ADDRESSES, *self.calibration.poll_addresses())
-        elif current is self.faults or current is self.states or current is self.eeprom:
+        elif current is self.faults or current is self.states:
             addresses = STATUS_WATCH_ADDRESSES
+        elif current is self.eeprom:
+            addresses = (*STATUS_WATCH_ADDRESSES, EEPROM_STATE_ADDRESS)
         else:
             addresses = DEFAULT_WATCH_ADDRESSES
         self.poller.set_active_addresses(addresses)
@@ -357,11 +377,16 @@ class MainWindow(QMainWindow):
 
     def _update_clear_status(self) -> None:
         if self._pump is None:
+            if self._push_active:
+                self._abort_push("Connection lost.")
             return
         source = self._pump.source
         error = getattr(source, "last_write_error", None)
         accepted = getattr(source, "last_write_ok", False)
         address = getattr(source, "last_write_address", None)
+        if self._push_active:
+            self._account_push_write(source, error, accepted, address)
+            return
         if address in RAM_WRITE_ADDRESSES:
             self.calibration.set_write_status(error, accepted)
             return
@@ -494,6 +519,247 @@ class MainWindow(QMainWindow):
             )
             return
         self.poller.start_dump(snapshot_addresses(self.catalog.memory_symbols))
+
+    def _single_read_eeprom(self, address: int) -> None:
+        if self._pump is None or self.source.currentText() != "RS232":
+            return
+        self.poller.request_read(int(address))
+
+    # -- EEPROM push ----------------------------------------------------
+
+    _PUSH_COMMIT_LABELS = {
+        EEPROM_COMMIT_UNLOCK[0]: ("Program EEPROM — unlock", "wm0000=5a0f"),
+        EEPROM_COMMIT_COMMAND[0]: ("Program EEPROM — commit", "wm0001=0059"),
+    }
+
+    def _push_eeprom(self) -> None:
+        if self._push_dialog is not None:
+            QMessageBox.information(self, "Push running", "A push is already open.")
+            return
+        if self._pump is None or self.source.currentText() != "RS232":
+            QMessageBox.information(
+                self,
+                "RS232 not running",
+                "Start RS232 first. EEPROM words are Memory View writes, not CAN.",
+            )
+            return
+        pending = self.eeprom.pending_writes()
+        if not pending:
+            QMessageBox.information(
+                self,
+                "Nothing to flash",
+                "No edited values. Double-click an EEPROM value to edit it first.",
+            )
+            return
+        snapshot = self.store.snapshot()
+        reading = read_calibration(snapshot)
+        blocked = write_blocked_reason(
+            reading.vsm, reading.enable, reading.inverter_mode, kind="eeprom"
+        )
+        if blocked:
+            QMessageBox.warning(self, "Cannot push yet", blocked)
+            return
+        lines: list[str] = []
+        for address, raw in pending:
+            symbol = self.catalog.memory_by_address.get(address)
+            if symbol is None:
+                continue
+            old = describe_word(symbol, self.eeprom.baseline_raw(address))
+            lines.append(f"{symbol.name} ({symbol.address_text}): {old} → {describe_word(symbol, raw)}")
+        box = QMessageBox(self)
+        box.setWindowTitle(f"Push {len(lines)} edits to inverter?")
+        box.setText(
+            f"Write {len(lines)} edited words with Memory View (wm), "
+            "then program EEPROM (wm0000/wm0001)?"
+        )
+        box.setInformativeText(
+            "After programming: Recycle Power → off 20–30 s → on. "
+            "Expect POST 26 (EEPROM Update Required), then VSM 15 (Recycle Power)."
+        )
+        box.setDetailedText("\n".join(lines))
+        box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        box.setDefaultButton(QMessageBox.StandardButton.No)
+        if box.exec() != QMessageBox.StandardButton.Yes:
+            return
+        steps = [
+            EepromPushStep(
+                address,
+                f"{self.catalog.memory_by_address[address].name} "
+                f"({self.catalog.memory_by_address[address].address_text})",
+                f"{describe_word(symbol, self.eeprom.baseline_raw(address))} → "
+                f"{describe_word(symbol, raw)}",
+            )
+            for address, raw in pending
+            if (symbol := self.catalog.memory_by_address.get(address)) is not None
+        ]
+        for address, (label, detail) in self._PUSH_COMMIT_LABELS.items():
+            steps.append(EepromPushStep(address, f"{label} ({address:#06x})", detail))
+        self._push_dialog = EepromPushDialog(self, steps)
+        self._push_dialog.cancel_requested.connect(self._cancel_push)
+        self._push_dialog.done_requested.connect(self._finish_push)
+        self._push_active = True
+        self._push_cancelled = False
+        self._push_remaining = [(address, raw) for address, raw in pending]
+        self._push_remaining.extend([EEPROM_COMMIT_UNLOCK, EEPROM_COMMIT_COMMAND])
+        self._push_head = None
+        self._push_results = {}
+        self._push_errors = {}
+        self._push_dialog.set_status("Sending edited words…")
+        self._push_dialog.show()
+        self._send_next_push()
+
+    def _send_next_push(self) -> None:
+        dialog = self._push_dialog
+        if dialog is None:
+            return
+        if self._pump is None:
+            self._abort_push("Connection lost.")
+            return
+        source = self._pump.source
+        if not hasattr(source, "enqueue_write"):
+            self._abort_push("This source cannot send Memory View writes.")
+            return
+        if not self._push_remaining:
+            self._complete_push()
+            return
+        address, value = self._push_remaining.pop(0)
+        self._push_head = (address, value)
+        self._push_head_sig = (
+            bool(getattr(source, "last_write_ok", False)),
+            getattr(source, "last_write_error", None),
+        )
+        source.enqueue_write(address, value)
+        if address in (EEPROM_COMMIT_UNLOCK[0], EEPROM_COMMIT_COMMAND[0]):
+            dialog.cancel_btn.setEnabled(False)
+            dialog.set_status("Programming EEPROM — do not unplug or power off…")
+
+    def _account_push_write(
+        self, source: object, error: str | None, accepted: bool, address: int | None
+    ) -> None:
+        dialog = self._push_dialog
+        if dialog is None or self._push_head is None:
+            return
+        head_address, _value = self._push_head
+        if address != head_address:
+            return
+        if (bool(accepted), error) == self._push_head_sig:
+            return
+        ok = bool(accepted) and not error
+        self._push_results[head_address] = ok
+        if not ok:
+            self._push_errors[head_address] = error or "No acknowledgement from the inverter."
+        dialog.set_step_status(head_address, "Sent ✓" if ok else "Failed", ok)
+        dialog.set_status(f"Sent {len(self._push_results)}/{dialog.progress.maximum()} words…")
+        self._push_head = None
+        commit = {EEPROM_COMMIT_UNLOCK[0], EEPROM_COMMIT_COMMAND[0]}
+        if not ok and head_address in commit:
+            self._abort_push(
+                f"Program EEPROM failed ({self._push_errors[head_address]}). "
+                "Nothing was programmed — your edits are still unsaved."
+            )
+            return
+        if self._push_cancelled:
+            for rest, _ in self._push_remaining:
+                dialog.set_step_status(rest, "Skipped", None)
+            self._push_remaining = []
+            self._complete_push(cancelled=True)
+            return
+        self._send_next_push()
+
+    def eeprom_progress_done(self) -> int:
+        return len(self._push_results)
+
+    def eeprom_progress_total(self) -> int:
+        dialog = self._push_dialog
+        if dialog is None:
+            return 0
+        return dialog.progress.maximum()
+
+    def _complete_push(self, cancelled: bool = False) -> None:
+        dialog = self._push_dialog
+        if dialog is None:
+            return
+        self._push_active = False
+        commit = {EEPROM_COMMIT_UNLOCK[0], EEPROM_COMMIT_COMMAND[0]}
+        failed = sorted(
+            address for address, ok in self._push_results.items() if not ok and address not in commit
+        )
+        programmed = self._push_results.get(EEPROM_COMMIT_COMMAND[0], False)
+        recycle = (
+            "Recycle Power → off 20–30 s → on. Expect POST 26 "
+            "(EEPROM Update Required), then VSM 15 (Recycle Power). "
+            "While EEprom_State reads 7, EEPROM reads may show 0 — "
+            "that is the busy window, not a wipe."
+        )
+        if cancelled and not programmed:
+            dialog.finish(
+                "Stopped before programming — nothing was flashed. "
+                "Your edits are still unsaved."
+            )
+            return
+        if not programmed:
+            dialog.finish("Nothing was flashed. Your edits are still unsaved.")
+            return
+        if failed:
+            names = ", ".join(
+                self.catalog.memory_by_address[address].name
+                for address in failed
+                if address in self.catalog.memory_by_address
+            )
+            dialog.finish(
+                f"Programmed, but {len(failed)} words failed and kept their old "
+                f"values ({names}). They are still marked unsaved. {recycle}"
+            )
+            return
+        dialog.finish(f"Programmed {len(self._push_results) - len(commit)} words. {recycle}")
+
+    def _cancel_push(self) -> None:
+        if not self._push_active:
+            return
+        self._push_cancelled = True
+        if self._push_dialog is not None:
+            self._push_dialog.set_status("Stopping after the current word…")
+
+    def _abort_push(self, reason: str) -> None:
+        dialog = self._push_dialog
+        if dialog is None:
+            return
+        self._push_active = False
+        if self._push_head is not None:
+            head_address, _value = self._push_head
+            self._push_results.setdefault(head_address, False)
+            dialog.set_step_status(head_address, "Failed", False)
+            self._push_head = None
+        for rest, _ in self._push_remaining:
+            dialog.set_step_status(rest, "Skipped", None)
+        self._push_remaining = []
+        dialog.finish(f"{reason} Nothing was programmed.")
+
+    def _finish_push(self) -> None:
+        dialog = self._push_dialog
+        if dialog is None:
+            return
+        commit = {EEPROM_COMMIT_UNLOCK[0], EEPROM_COMMIT_COMMAND[0]}
+        flashed = [address for address, ok in self._push_results.items() if ok and address not in commit]
+        self.eeprom.mark_flashed(flashed)
+        if self._pump is not None:
+            source = self._pump.source
+            for attr, value in (
+                ("last_write_ok", False),
+                ("last_write_error", None),
+                ("last_write_address", None),
+            ):
+                if hasattr(source, attr):
+                    try:
+                        setattr(source, attr, value)
+                    except AttributeError:
+                        pass
+            if self.source.currentText() == "RS232":
+                self.poller.start_dump(snapshot_addresses(self.catalog.memory_symbols))
+        self._push_dialog = None
+        self._push_active = False
+        self._push_cancelled = False
+        dialog.close()
 
     def _about(self) -> None:
         QMessageBox.information(

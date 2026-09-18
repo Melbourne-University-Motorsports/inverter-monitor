@@ -65,6 +65,17 @@ class GroupedSymbolTree(QTreeWidget):
             self.header().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
         self.header().setStretchLastSection(False)
 
+    @property
+    def value_column(self) -> int:
+        return 3 if self._show_kind else 2
+
+    @property
+    def raw_column(self) -> int:
+        return 4 if self._show_kind else 3
+
+    def item_for_address(self, address: int) -> QTreeWidgetItem | None:
+        return self._items.get(int(address))
+
     def set_symbols(
         self,
         symbols: Iterable[MemorySymbol],
@@ -142,7 +153,5 @@ class GroupedSymbolTree(QTreeWidget):
             if symbol is None:
                 continue
             value, raw = symbol_value_texts(symbol, snapshot)
-            value_col = 3 if self._show_kind else 2
-            raw_col = 4 if self._show_kind else 3
-            item.setText(value_col, value)
-            item.setText(raw_col, raw)
+            item.setText(self.value_column, value)
+            item.setText(self.raw_column, raw)

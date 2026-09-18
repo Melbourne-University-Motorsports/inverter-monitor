@@ -96,7 +96,7 @@ rm0056  →  EEprom_State  5 → 7
 
 Original yuh4.pcapng (USBPcap1) is USB mass-storage BOT (`USBC`/`USBS`), 46 kB, no `rm`/`wm`.
 
-The monitor Calibration tab iterates Memory Values, then optionally copies Delay/Gamma into `0x0118`/`0x011A` and sends this commit pair (Wait, enable off). Other EEPROM parameters stay read-only.
+The monitor Calibration tab iterates Memory Values, then optionally copies Delay/Gamma into `0x0118`/`0x011A` and sends this commit pair (Wait, enable off). The EEPROM tab edits any EEPROM word the same way (change-list confirm, per-word progress) and sends the same pair. Other Memory View words stay read-only.
 
 ## How this sits next to SCI
 

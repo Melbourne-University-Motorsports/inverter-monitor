@@ -1,4 +1,11 @@
 #!/bin/bash
 # Finder double-click entry on macOS.
 cd "$(dirname "$0")"
-exec bash ./run.sh
+bash ./run.sh "$@"
+status=$?
+if [[ $status -ne 0 ]]; then
+  echo
+  echo "The monitor did not start. Press Return to close."
+  read
+fi
+exit $status

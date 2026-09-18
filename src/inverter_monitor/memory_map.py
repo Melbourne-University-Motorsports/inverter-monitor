@@ -285,6 +285,11 @@ class MemoryPoller:
             done = min(self._oneshot_index, total)
             return DumpProgress(done=done, total=total, active=done < total)
 
+    def request_read(self, address: int) -> None:
+        """Queue a single one-shot read without discarding an active dump."""
+        with self._lock:
+            self._oneshot.insert(self._oneshot_index, int(address))
+
     def next_address(self) -> int | None:
         watches = self.poll_addresses()
         with self._lock:
@@ -494,6 +499,114 @@ def decode_raw(symbol: MemorySymbol, raw_u16: int) -> int | float | str:
     if symbol.factor != 1.0:
         return raw * symbol.factor
     return raw
+
+
+def _signed_value(symbol: MemorySymbol, raw_u16: int) -> int:
+    raw = int(raw_u16) & 0xFFFF
+    if symbol.signed and raw >= 0x8000:
+        raw -= 0x10000
+    return raw
+
+
+def edit_unit(symbol: MemorySymbol) -> str:
+    """Obvious unit suffix for the edit box, or "" when the name carries none.
+
+    The defsyms paren token is noisy ("(Trq=0_Spd=1)", "(Lo_Word)"), so only
+    recognised measurement units are returned; anything else falls back to a
+    plain number box.
+    """
+    if symbol.display != "dec":
+        return ""
+    token = symbol.unit.strip().lower()
+    if not token:
+        return ""
+    if token.startswith("volt") or token in {"v", "vx10"}:
+        return "V"
+    if token.startswith("amp") or token == "a":
+        return "A"
+    if token.startswith("nm"):
+        return "Nm"
+    if token.startswith("rpm"):
+        return "RPM" if "sec" not in token else "RPM/s"
+    if token == "°c":
+        return "°C"
+    if token == "deg":
+        return "deg"
+    if token == "wb":
+        return "Wb"
+    if "count" in token or token == "adc":
+        return "counts"
+    if token.startswith("ahr") or token == "ah":
+        return "Ah"
+    if "ms" in token:
+        return "ms"
+    if token.startswith("sec") or token == "s":
+        return "s"
+    if token.startswith("hz"):
+        return "Hz"
+    if "kbps" in token:
+        return "kbps"
+    return ""
+
+
+def engineering_decimals(symbol: MemorySymbol) -> int:
+    """Fixed decimal places that round-trip raw <-> engineering text."""
+    if symbol.factor >= 1.0:
+        return 0
+    decimals = 0
+    scaled = 1.0
+    while decimals < 6 and scaled > symbol.factor + 1e-12:
+        scaled /= 10.0
+        decimals += 1
+    return decimals
+
+
+def format_engineering(symbol: MemorySymbol, raw_u16: int) -> str:
+    """Engineering text for the units edit box (no unit suffix)."""
+    value = _signed_value(symbol, raw_u16) * symbol.factor
+    return f"{value:.{engineering_decimals(symbol)}f}"
+
+
+def _engineering_range(symbol: MemorySymbol) -> tuple[float, float]:
+    lo, hi = (-32768, 32767) if symbol.signed else (0, 65535)
+    return lo * symbol.factor, hi * symbol.factor
+
+
+def parse_engineering(symbol: MemorySymbol, text: str) -> int:
+    """Parse units text into the raw word to flash. Raises ValueError."""
+    cleaned = text.strip()
+    unit = edit_unit(symbol)
+    if unit and cleaned.lower().endswith(unit.lower()):
+        cleaned = cleaned[: -len(unit)].strip()
+    try:
+        value = float(cleaned)
+    except ValueError:
+        raise ValueError(f"“{text.strip()}” is not a number.") from None
+    raw = round(value / symbol.factor)
+    lo, hi = (-32768, 32767) if symbol.signed else (0, 65535)
+    if raw < lo or raw > hi:
+        lo_eng, hi_eng = _engineering_range(symbol)
+        decimals = engineering_decimals(symbol)
+        suffix = f" {unit}" if unit else ""
+        raise ValueError(
+            f"Must be between {lo_eng:.{decimals}f}{suffix} "
+            f"and {hi_eng:.{decimals}f}{suffix}."
+        )
+    return int(raw) & 0xFFFF
+
+
+def parse_raw_word(symbol: MemorySymbol, text: str) -> int:
+    """Parse the raw-decimal edit box into the word to flash. Raises ValueError."""
+    cleaned = text.strip().lower().removeprefix("0x")
+    base = 16 if text.strip().lower().startswith("0x") else 10
+    try:
+        value = int(cleaned, base)
+    except ValueError:
+        raise ValueError(f"“{text.strip()}” is not a whole number.") from None
+    lo, hi = (-32768, 32767) if symbol.signed else (0, 65535)
+    if value < lo or value > hi:
+        raise ValueError(f"Must be a whole number between {lo} and {hi}.")
+    return int(value) & 0xFFFF
 
 
 def pack_memory_frame(address: int, raw_u16: int) -> bytes:
