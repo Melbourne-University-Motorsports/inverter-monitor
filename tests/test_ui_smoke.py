@@ -10,6 +10,7 @@ from inverter_monitor.cli import build_parser
 from inverter_monitor.decode import Decoder
 from inverter_monitor.memory_map import (
     CAN_ID_OFFSET_ADDRESS,
+    CAN_STATUS_WATCH_ADDRESSES,
     DEFAULT_CAN_ID_OFFSET,
     DEFAULT_WATCH_ADDRESSES,
     FEEDBACK_SPEED_ADDRESS,
@@ -261,7 +262,11 @@ def test_tab_poll_set_preserves_symbols_watch_list():
     window.tabs.setCurrentWidget(window.faults)
     app.processEvents()
     assert extra_address in window.watch_list.addresses()
-    assert window.poller.poll_addresses() == STATUS_WATCH_ADDRESSES
+    # Faults reads the POST/RUN words plus the CAN module's own status registers.
+    assert window.poller.poll_addresses() == (
+        *STATUS_WATCH_ADDRESSES,
+        *CAN_STATUS_WATCH_ADDRESSES,
+    )
 
     window.tabs.setCurrentWidget(window.eeprom)
     app.processEvents()

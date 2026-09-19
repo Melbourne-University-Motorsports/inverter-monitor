@@ -1,5 +1,17 @@
 # PM100DX Bundle Update Log
 
+## 2026-09-19
+* **New**: `can/can-status.md` — Gen 3 CAN module diagnostics from CAN Protocol
+  §1.2: `CAN_Status` `0x00C8` (EW 0x0020 / EP 0x0040 / BO 0x0080, plus the
+  info bits), sticky `CAN_Faults` `0x00C9` (ACKE/SE/CRCE/SA1/BE/FE), and the
+  Tx/Rx error counters `0x00CC`/`0x00CD`/`0x008B`. §1.3's Gen 5/CM-only watch
+  items are listed as not-this-hardware. `CANES_Low/High` `0x00CA/0x00CB` are
+  filed as undocumented. Data in `data/can_status.yaml`.
+* **Update**: The monitor now turns those words into a CAN health level
+  (`ok` / `CAN degraded` / `CAN bus off` / unknown) shown on the Faults tab and
+  appended to the status strip's existing `FAULTS` element. The Faults tab polls
+  the four CAN addresses while it is open.
+
 ## 2026-09-17
 * **Update**: Calibration Program EEPROM is enabled as a last step. yuh4 (1)
   confirmed Memory Values Gamma `0x0010` −8/−10 with `RAE`; yuh3 commit pair

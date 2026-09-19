@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from inverter_monitor.catalog import Catalog, FaultBit
+from inverter_monitor.can_health import evaluate_can_health
 from inverter_monitor.store import StoreSnapshot, get_signal
 from inverter_monitor.ui.theme import (
     ACCENT,
@@ -63,6 +64,24 @@ def _severity_color(severity: str) -> str:
 def _bank(bit: int | FaultBit) -> str:
     number = bit.bit if isinstance(bit, FaultBit) else bit
     return "POST" if number < 32 else "RUN"
+
+
+def _counter_label(name: str) -> str:
+    short = name.removeprefix("CAN_").replace("_Error_Counter", "")
+    return short.replace("_(Max)", " (max)") or name
+
+
+def _can_value_text(health) -> str:
+    """Raw words and error counters behind the CAN chip, e.g. '0x00C8 0020 · Tx 12'."""
+    if not health.known:
+        return ""
+    parts: list[str] = []
+    if health.status_word is not None:
+        parts.append(f"0x00C8 {health.status_word:04X}")
+    if health.fault_word is not None:
+        parts.append(f"0x00C9 {health.fault_word:04X}")
+    parts.extend(f"{_counter_label(name)} {value}" for name, value in health.counters)
+    return "   ".join(parts)
 
 
 class FaultBitMap(QWidget):
@@ -178,6 +197,23 @@ class FaultBitMap(QWidget):
         super().leaveEvent(event)
 
 
+class _CanChip(QLabel):
+    """CAN health chip. Clicking it puts the full bit explanations in the detail pane."""
+
+    clicked = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("CAN —", parent)
+        self.setObjectName("flagChip")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip("CAN module status — click for the bit explanations")
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+
 class FaultsPage(QWidget):
     clear_requested = Signal()
 
@@ -189,6 +225,7 @@ class FaultsPage(QWidget):
         self._selected_bit: int | None = None
         self._active_ids: tuple[int, ...] = ()
         self._history_key: tuple[tuple[float, int, bool], ...] = ()
+        self._can_health = None
 
         self.headline = QLabel("NO DATA")
         self.headline.setObjectName("faultHeadline")
@@ -224,10 +261,26 @@ class FaultsPage(QWidget):
         head.addLayout(tools)
 
         self.bitmap = FaultBitMap(catalog)
+        self.can_chip = _CanChip()
+        set_tone(self.can_chip, "dim")
+        self.can_note = QLabel("")
+        self.can_note.setObjectName("muted")
+        self.can_note.setWordWrap(True)
+        self.can_values = QLabel("")
+        self.can_values.setFont(mono_font(11))
+        set_tone(self.can_values, "dim")
+
+        can_row = QHBoxLayout()
+        can_row.setContentsMargins(0, 2, 0, 0)
+        can_row.addWidget(self.can_chip)
+        can_row.addWidget(self.can_note, 1)
+        can_row.addWidget(self.can_values)
+
         map_card = Card()
         map_layout = QVBoxLayout(map_card)
         map_layout.setContentsMargins(*CARD_MARGINS)
         map_layout.addWidget(self.bitmap)
+        map_layout.addLayout(can_row)
         map_layout.addWidget(self.command_status)
 
         self.active = QTableWidget(0, 3)
@@ -296,6 +349,7 @@ class FaultsPage(QWidget):
         self.refresh_btn.clicked.connect(self._refresh_clicked)
         self.clear_btn.clicked.connect(self.clear_requested.emit)
         self.bitmap.bit_clicked.connect(self._select_bit)
+        self.can_chip.clicked.connect(self._show_can_detail)
         self.active.itemSelectionChanged.connect(self._active_selection_changed)
 
     def set_connected(self, connected: bool) -> None:
@@ -366,6 +420,47 @@ class FaultsPage(QWidget):
             self._show_detail(self._selected_bit, set(active_ids))
         elif faults:
             self._show_detail(faults[0].bit, set(active_ids))
+
+        self._render_can(snapshot)
+
+    def _render_can(self, snapshot: StoreSnapshot) -> None:
+        """CAN module health band: chip + one-line reason + raw words/counters."""
+        health = evaluate_can_health(snapshot, self._catalog)
+        self._can_health = health
+        self.can_chip.setText(health.label)
+        set_tone(self.can_chip, health.tone)
+        self.can_note.setText(health.note)
+        self.can_values.setText(_can_value_text(health))
+        self.can_values.setVisible(bool(self.can_values.text()))
+        self.can_chip.setToolTip(
+            "\n".join(health.reasons) if health.reasons
+            else "CAN module status — click for the bit explanations"
+        )
+
+    def _show_can_detail(self) -> None:
+        health = self._can_health
+        if health is None:
+            return
+        lines = [health.label, health.note, ""]
+        values = _can_value_text(health)
+        if values:
+            lines.extend([values, ""])
+        if health.reasons:
+            lines.extend(f"• {reason}" for reason in health.reasons)
+        elif health.known:
+            lines.append("No CAN errors on the bus right now.")
+        lines.extend(
+            [
+                "",
+                f"CAN_Status 0x00C8 and CAN_Faults 0x00C9 are shadow registers of the CAN module",
+                f"(CAN Protocol {self._catalog.can_status.source}).",
+            ]
+        )
+        applies_to = self._catalog.can_status.applies_to
+        if applies_to:
+            lines.append(f"{applies_to} map — Gen 5/CM reports the same things as separate watch items.")
+        lines.append("Latched CAN fault bits clear with Clear Faults, like POST/RUN faults.")
+        self.detail.setPlainText("\n".join(lines))
 
     def _fill_active(self, faults: tuple[FaultBit, ...]) -> None:
         selected = self._selected_bit

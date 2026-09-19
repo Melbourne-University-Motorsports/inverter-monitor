@@ -61,6 +61,71 @@ class FaultBit:
 
 
 @dataclass(frozen=True)
+class CanStatusBit:
+    mask: int
+    name: str
+    severity: str
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class CanStatusRegister:
+    name: str
+    symbol: str
+    address: int
+    bits: tuple[CanStatusBit, ...]
+    live: bool = True
+    sticky: bool = False
+    notes: str = ""
+
+    def active_bits(self, word: int) -> tuple[CanStatusBit, ...]:
+        return tuple(bit for bit in self.bits if word & bit.mask)
+
+
+@dataclass(frozen=True)
+class CanErrorCounter:
+    name: str
+    symbol: str
+    address: int
+    maximum: int
+    warn_at: int
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class CanSymbolNote:
+    name: str
+    address: int
+    note: str
+
+
+@dataclass(frozen=True)
+class CanStatusMap:
+    """CAN module diagnostics readable over RS232 Memory View (CAN Protocol §1.2, Gen 3)."""
+
+    registers: tuple[CanStatusRegister, ...] = ()
+    counters: tuple[CanErrorCounter, ...] = ()
+    undocumented: tuple[CanSymbolNote, ...] = ()
+    gen5_only: tuple[str, ...] = ()
+    applies_to: str = ""
+    source: str = ""
+
+    def register(self, name: str) -> CanStatusRegister | None:
+        wanted = _norm(name)
+        for register in self.registers:
+            if _norm(register.name) == wanted:
+                return register
+        return None
+
+    def counter(self, name: str) -> CanErrorCounter | None:
+        wanted = _norm(name)
+        for counter in self.counters:
+            if _norm(counter.name) == wanted:
+                return counter
+        return None
+
+
+@dataclass(frozen=True)
 class VsmState:
     id: int
     name: str
@@ -109,6 +174,7 @@ class Catalog:
     inverter_states: dict[int, VsmState]
     memory_symbols: tuple[MemorySymbol, ...] = ()
     memory_by_address: dict[int, MemorySymbol] = field(default_factory=dict)
+    can_status: CanStatusMap = field(default_factory=CanStatusMap)
 
     def message_for(self, arbitration_id: int, id_offset: int = 0) -> MessageDef | None:
         return self.messages.get(arbitration_id - id_offset)
@@ -182,11 +248,73 @@ def _vsm_state(raw: dict[str, Any]) -> VsmState:
     )
 
 
+def _can_status_bit(raw: dict[str, Any]) -> CanStatusBit:
+    return CanStatusBit(
+        mask=parse_int(raw["mask"]),
+        name=str(raw.get("name", "")),
+        severity=str(raw.get("severity", "info")),
+        description=str(raw.get("description", "")),
+    )
+
+
+def _can_status_map(doc: dict[str, Any]) -> CanStatusMap:
+    if not doc:
+        return CanStatusMap()
+    registers = tuple(
+        CanStatusRegister(
+            name=str(raw.get("name", "")),
+            symbol=str(raw.get("symbol", "")),
+            address=parse_int(raw.get("address", 0)),
+            bits=tuple(_can_status_bit(bit) for bit in raw.get("bits") or []),
+            live=bool(raw.get("live", True)),
+            sticky=bool(raw.get("sticky", False)),
+            notes=str(raw.get("notes", "")),
+        )
+        for raw in doc.get("registers") or []
+    )
+    counters = tuple(
+        CanErrorCounter(
+            name=str(raw.get("name", "")),
+            symbol=str(raw.get("symbol", "")),
+            address=parse_int(raw.get("address", 0)),
+            maximum=int(raw.get("max", 0)),
+            warn_at=int(raw.get("warn_at", 0)),
+            description=str(raw.get("description", "")),
+        )
+        for raw in doc.get("counters") or []
+    )
+    undocumented = tuple(
+        CanSymbolNote(
+            name=str(raw.get("name", "")),
+            address=parse_int(raw.get("address", 0)),
+            note=str(raw.get("note", "")),
+        )
+        for raw in doc.get("undocumented_symbols") or []
+    )
+    gen5 = tuple(
+        str(item)
+        for item in (doc.get("gen5_only_watch_items") or {}).get("items") or []
+    )
+    sections = doc.get("sections") or []
+    return CanStatusMap(
+        registers=registers,
+        counters=counters,
+        undocumented=undocumented,
+        gen5_only=gen5,
+        applies_to=str(doc.get("applies_to", "")),
+        source=" · ".join(str(item) for item in sections),
+    )
+
+
 def load_catalog(root: Path | None = None) -> Catalog:
     base = root or data_dir()
     decode_doc = yaml.safe_load((base / "reference_decode.yaml").read_text())
     faults_doc = yaml.safe_load((base / "faults.yaml").read_text())
     vsm_doc = yaml.safe_load((base / "vsm_states.yaml").read_text())
+    can_status_path = base / "can_status.yaml"
+    can_status_doc = (
+        yaml.safe_load(can_status_path.read_text()) if can_status_path.exists() else {}
+    )
 
     messages: dict[int, MessageDef] = {}
     messages_by_name: dict[str, MessageDef] = {}
@@ -261,6 +389,7 @@ def load_catalog(root: Path | None = None) -> Catalog:
         inverter_states=inverter_states,
         memory_symbols=memory_symbols,
         memory_by_address={item.address: item for item in memory_symbols},
+        can_status=_can_status_map(can_status_doc),
     )
 
 

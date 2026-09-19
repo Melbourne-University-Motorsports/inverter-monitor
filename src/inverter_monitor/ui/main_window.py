@@ -30,6 +30,7 @@ from inverter_monitor.calibration import (
 from inverter_monitor.catalog import Catalog
 from inverter_monitor.decode import M193_PARAM_COMMAND_ID, PARAM_CLEAR_FAULTS, Decoder, pack_param_write
 from inverter_monitor.memory_map import (
+    CAN_STATUS_WATCH_ADDRESSES,
     CLEAR_FAULTS_ADDRESS,
     DEFAULT_CAN_ID_OFFSET,
     DEFAULT_WATCH_ADDRESSES,
@@ -262,7 +263,11 @@ class MainWindow(QMainWindow):
             addresses = (*STATUS_WATCH_ADDRESSES, *self.graphs.poll_addresses())
         elif current is self.calibration:
             addresses = (*STATUS_WATCH_ADDRESSES, *self.calibration.poll_addresses())
-        elif current is self.faults or current is self.states:
+        elif current is self.faults:
+            # Faults tab also reads the CAN module's status/fault words and error
+            # counters (Gen 3 memory view) so the CAN flag has something to show.
+            addresses = (*STATUS_WATCH_ADDRESSES, *CAN_STATUS_WATCH_ADDRESSES)
+        elif current is self.states:
             addresses = STATUS_WATCH_ADDRESSES
         elif current is self.eeprom:
             addresses = (*STATUS_WATCH_ADDRESSES, EEPROM_STATE_ADDRESS)

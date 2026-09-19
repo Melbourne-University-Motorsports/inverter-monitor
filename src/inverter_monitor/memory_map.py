@@ -19,6 +19,16 @@ VSM_STATE_ADDRESS = 0x0093
 INVERTER_MODE_ADDRESS = 0x0092
 INVERTER_ENABLE_ADDRESS = 0x0094
 INV_CMD_MODE_ADDRESS = 0x011B
+# CAN module diagnostics (CAN Protocol Rev 6.3 §1.2, Gen 3 only). Shadow
+# registers of the microcontroller CAN module, read over the same rm protocol.
+CAN_STATUS_ADDRESS = 0x00C8
+CAN_FAULTS_ADDRESS = 0x00C9
+CAN_TX_ERROR_ADDRESS = 0x00CC
+CAN_RX_ERROR_ADDRESS = 0x00CD
+# Peak Tx error count — a post-run witness, readable from the Symbols tab rather
+# than worth a permanent slot in the Faults round-robin.
+CAN_TX_ERROR_MAX_ADDRESS = 0x008B
+
 # RMS GUI default poll slots (yuh captures). Not in G3 defsyms; Check Faults reads these.
 POST_FAULT_LO_ADDRESS = 0x0057
 POST_FAULT_HI_ADDRESS = 0x0058
@@ -48,6 +58,16 @@ STATUS_WATCH_ADDRESSES = (
     POST_FAULT_HI_ADDRESS,
     RUN_FAULT_LO_ADDRESS,
     RUN_FAULT_HI_ADDRESS,
+)
+
+# Faults tab overlay: the CAN module's own status/fault words and error counters
+# (Gen 3 CAN Protocol §1.2). Kept off STATUS_WATCH_ADDRESSES so the always-on
+# status loop stays short — the Faults tab is where CAN health is read.
+CAN_STATUS_WATCH_ADDRESSES = (
+    CAN_STATUS_ADDRESS,
+    CAN_FAULTS_ADDRESS,
+    CAN_TX_ERROR_ADDRESS,
+    CAN_RX_ERROR_ADDRESS,
 )
 
 # Overview / Raw, and the Symbols “reload default” list.
