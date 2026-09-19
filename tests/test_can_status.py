@@ -23,6 +23,8 @@ from inverter_monitor.memory_map import (
     CAN_TX_ERROR_ADDRESS,
     CAN_TX_ERROR_MAX_ADDRESS,
     MEMORY_FRAME_ID,
+    POST_FAULT_LO_ADDRESS,
+    RUN_FAULT_LO_ADDRESS,
     pack_memory_frame,
 )
 from inverter_monitor.store import InverterStore
@@ -48,6 +50,12 @@ def _snapshot(catalog, *, status=None, faults=None, tx=None, rx=None, now=1.0):
     ):
         if value is None:
             continue
+        payload = pack_memory_frame(address, value)
+        updates = decoder.decode_frame(MEMORY_FRAME_ID, payload)
+        store.apply_frame(MEMORY_FRAME_ID, payload, updates, now=now, name="Memory_View")
+    # The Faults page treats a clean POST word as the fault feed being present;
+    # otherwise it shows NO DATA even while the CAN registers are reading fine.
+    for address, value in ((POST_FAULT_LO_ADDRESS, 0), (RUN_FAULT_LO_ADDRESS, 0)):
         payload = pack_memory_frame(address, value)
         updates = decoder.decode_frame(MEMORY_FRAME_ID, payload)
         store.apply_frame(MEMORY_FRAME_ID, payload, updates, now=now, name="Memory_View")
@@ -197,7 +205,7 @@ def test_stale_can_words_are_not_reported_as_ok():
     assert health.note == WAITING_NOTE
 
 
-def test_faults_page_shows_the_can_band_and_the_strip_reflects_it():
+def test_faults_page_headline_carries_the_can_flag():
     catalog = load_catalog()
     app = _app()
     page = FaultsPage(catalog)
@@ -206,30 +214,93 @@ def test_faults_page_shows_the_can_band_and_the_strip_reflects_it():
 
     _, _, clean = _snapshot(catalog, status=0x0000, faults=0x0000, tx=0, rx=0)
     page.update_from(clean)
-    assert page.can_chip.text() == "CAN OK"
-    assert page.can_chip.property("tone") == "ok"
-    assert page.can_values.text() == "0x00C8 0000   0x00C9 0000   Tx 0   Rx 0"
+    assert page.headline.text() == "ALL CLEAR"
+    assert page.headline.property("tone") == "ok"
+
+    # With no inverter faults and a degraded CAN, the CAN problem leads the
+    # headline rather than be a footnote on "ALL CLEAR".
+    _, _, degraded = _snapshot(catalog, status=0x0020, faults=0x000B, tx=97, rx=2)
+    page.update_from(degraded)
+    assert page.headline.text() == "CAN degraded"
+    assert page.headline.property("tone") == "warn"
+    assert "No inverter faults (POST/RUN all clear)" in page.counts.text()
+
+    # Bus off is red and leads the headline too.
+    _, _, bus_off = _snapshot(catalog, status=0x0080, faults=0x0000, tx=255, rx=0)
+    page.update_from(bus_off)
+    assert page.headline.text() == "CAN bus off"
+    assert page.headline.property("tone") == "fault"
+
+    page.close()
+    app.processEvents()
+
+
+def test_faults_page_can_section_leads_with_the_reason():
+    catalog = load_catalog()
+    app = _app()
+    page = FaultsPage(catalog)
+    page.show()
+    app.processEvents()
+
+    _, _, clean = _snapshot(catalog, status=0x0000, faults=0x0000, tx=0, rx=0)
+    page.update_from(clean)
+    section = page.can_section
+    assert section.title.text().startswith("CAN MODULE")
+    assert section.chip.text() == "CAN OK"
+    assert section.chip.property("tone") == "ok"
+    assert section.values.text() == "Status 0000h   Faults (sticky) 0000h   Tx 0   Rx 0"
+    assert "No CAN errors on the bus right now." in section.why.text()
+    assert section.details_btn.isVisible()
+    assert not section.reference.isVisible()
+    assert section.property("tone") is None  # quiet frame when healthy
 
     # Error Warning in the status word, ACKE + Stuff Error + Stuck At Dominant latched.
     _, _, degraded = _snapshot(catalog, status=0x0020, faults=0x000B, tx=97, rx=2)
     page.update_from(degraded)
-    assert page.can_chip.text() == "CAN degraded"
-    assert page.can_chip.property("tone") == "warn"
-    assert "Error Warning" in page.can_note.text()
-    assert "Stuck At Dominant" in page.can_chip.toolTip()  # explained, not a trigger
+    assert section.chip.text() == "CAN degraded"
+    assert section.chip.property("tone") == "warn"
+    assert section.property("tone") == "warn"  # orange-framed block when degraded
+    why = section.why.text()
+    assert "Error Warning —" in why
+    assert "Acknowledge Error —" in why
+    assert "Stuck At Dominant" in why  # explained, not a trigger itself
+    assert "Gen 5/CM" in section.reference.text()
+    assert "sticky" in section.reference.text()
 
-    page.can_chip.clicked.emit()
+    # Detail pane stays untouched — the user owns the selection, refresh must not blank it.
+    assert page.detail.toPlainText() == ""
+
+    page.close()
     app.processEvents()
-    detail = page.detail.toPlainText()
-    assert "CAN degraded" in detail
-    assert "Error Warning" in detail and "Acknowledge Error" in detail
-    assert "Gen 3" in detail
 
+
+def test_faults_page_can_section_no_feed():
+    catalog = load_catalog()
+    app = _app()
+    page = FaultsPage(catalog)
+    page.show()
+    app.processEvents()
+    page.update_from(_memory_view_only_snapshot(catalog))
+    section = page.can_section
+    assert section.chip.text() == "CAN —"
+    assert section.chip.property("tone") == "dim"
+    assert "No fresh CAN status reading yet." in section.why.text()
+    assert not section.values.isVisible()
+    assert not section.details_btn.isVisible()
+    page.close()
+    app.processEvents()
+
+
+def test_status_strip_reflects_the_can_flag():
+    catalog = load_catalog()
+    app = _app()
     strip = StatusStrip(catalog)
+    _, _, clean = _snapshot(catalog, status=0x0000, faults=0x0000, tx=0, rx=0)
     strip.update_from(clean, "RS232", True)
     assert strip.faults.text() == "FAULTS 0"
     assert strip.faults.property("tone") == "ok"
 
+    _, _, degraded = _snapshot(catalog, status=0x0020, faults=0x000B, tx=97, rx=2)
     strip.update_from(degraded, "RS232", True)
     assert strip.faults.text() == "FAULTS 0 · CAN DEGRADED"
     assert strip.faults.property("tone") == "warn"
@@ -239,12 +310,10 @@ def test_faults_page_shows_the_can_band_and_the_strip_reflects_it():
     assert strip.faults.text() == "FAULTS 0 · CAN BUS OFF"
     assert strip.faults.property("tone") == "fault"
 
-    # Nothing read yet: the strip stays quiet rather than crying wolf.
+    # Memory View up but CAN registers not polled yet: no false alarm.
     strip.update_from(_memory_view_only_snapshot(catalog), "RS232", True)
     assert strip.faults.text() == "FAULTS 0"
     assert strip.faults.property("tone") == "ok"
-
-    page.close()
     app.processEvents()
 
 

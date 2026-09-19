@@ -106,6 +106,41 @@ def apply_theme(app: QApplication) -> None:
             border-radius: 8px;
         }}
 
+        /* Labeled section inside a card (e.g. the CAN module block). The base
+           style keeps it quiet; a tone adds a soft left-accent background. */
+        QFrame#subCard {{
+            background: transparent;
+            border: 1px solid {BORDER};
+            border-radius: 8px;
+        }}
+        QFrame#subCard[tone="warn"] {{
+            background: rgba(245, 165, 36, 0.08);
+            border-color: {WARN};
+        }}
+        QFrame#subCard[tone="fault"] {{
+            background: rgba(229, 72, 77, 0.08);
+            border-color: {FAULT};
+        }}
+        QFrame#subCard[tone="ok"] {{
+            border-color: {OK};
+        }}
+        QFrame#subCard > QLabel {{
+            background: transparent;
+        }}
+
+        QPushButton#textBtn {{
+            background: transparent;
+            border: none;
+            color: {ACCENT};
+            padding: 0 4px;
+        }}
+        QPushButton#textBtn:hover {{
+            text-decoration: underline;
+        }}
+        QPushButton#textBtn:checked {{
+            color: {TEXT};
+        }}
+
         QLabel#muted {{ color: {DIM}; }}
         QLabel#metric {{ font-size: 28px; font-weight: 600; }}
         QLabel#unit {{ color: {DIM}; font-size: 13px; }}
