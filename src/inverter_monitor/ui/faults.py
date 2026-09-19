@@ -213,34 +213,44 @@ class _FramedSection(QFrame):
         self.style().polish(self)
 
 
-class _CanStatusSection(_FramedSection):
-    """Labeled CAN module block: heading + chip + reason + raw words, always-on
-    explanation lines, and a small 'Details' toggle for the reference text."""
+class _CanChip(QLabel):
+    """Clickable CAN chip — clicking puts the full annotated text into the
+    parent page's detail pane."""
 
-    details_toggled = Signal(bool)
+    clicked = Signal()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: ARG002
+        self.clicked.emit()
+        super().mousePressEvent(event)
+
+
+class _CanStatusSection(_FramedSection):
+    """Labeled CAN module block: heading + chip + short summary + raw words.
+
+    The panel stays terse by design — detailed explanations are one click away
+    on the chip (which routes the full annotated text into the detail pane)
+    rather than living in the always-on sub-panel.
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(3)
 
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 0)
         self.title = QLabel("CAN MODULE (Gen 3 Memory View)")
         self.title.setObjectName("muted")
-        self.details_btn = QPushButton("Details")
-        self.details_btn.setObjectName("textBtn")
-        self.details_btn.setCheckable(True)
-        self.details_btn.setChecked(False)
-        self.details_btn.setVisible(False)
         head.addWidget(self.title, 1)
-        head.addWidget(self.details_btn)
+        self.hint = QLabel("click chip for details")
+        self.hint.setObjectName("muted")
+        head.addWidget(self.hint)
         layout.addLayout(head)
 
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
-        self.chip = QLabel("CAN —")
+        self.chip = _CanChip("CAN —")
         self.chip.setObjectName("flagChip")
         self.chip.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -255,22 +265,6 @@ class _CanStatusSection(_FramedSection):
         top.addWidget(self.values)
         layout.addLayout(top)
 
-        self.why = QLabel("")
-        self.why.setObjectName("muted")
-        self.why.setWordWrap(True)
-        layout.addWidget(self.why)
-
-        self.reference = QLabel("")
-        self.reference.setObjectName("muted")
-        self.reference.setWordWrap(True)
-        self.reference.setVisible(False)
-        layout.addWidget(self.reference)
-
-        self.details_btn.clicked.connect(self._details_clicked)
-
-    def _details_clicked(self, checked: bool) -> None:  # noqa: ARG002
-        self.reference.setVisible(self.details_btn.isChecked())
-        self.details_btn.setText("Hide details" if self.details_btn.isChecked() else "Details")
 
 
 class FaultsPage(QWidget):
@@ -352,7 +346,9 @@ class FaultsPage(QWidget):
 
         self.detail = QTextEdit()
         self.detail.setReadOnly(True)
-        self.detail.setMaximumHeight(120)
+        self.detail.setPlaceholderText(
+            "Click a bit in the map or the CAN chip to see the explanation here."
+        )
 
         self.history = QTableWidget(0, 3)
         self.history.setHorizontalHeaderLabels(["Time", "", "Name"])
@@ -371,16 +367,22 @@ class FaultsPage(QWidget):
         left.addWidget(active_title)
         left.addWidget(self.empty)
         left.addWidget(self.active, 1)
-        left.addWidget(self.detail)
         left_wrap = QWidget()
         left_wrap.setLayout(left)
 
         right = QVBoxLayout()
         right.setContentsMargins(0, 0, 0, 0)
+        detail_title = QLabel("Details")
+        detail_title.setObjectName("muted")
+        right.addWidget(detail_title)
+        # Details reads first and typically holds a 5-bullet CAN / bit
+        # explanation — give it breathing room instead of letting history
+        # (which is read-only and scrolls) take the space.
+        right.addWidget(self.detail, 3)
         hist_title = QLabel("History")
         hist_title.setObjectName("muted")
         right.addWidget(hist_title)
-        right.addWidget(self.history, 1)
+        right.addWidget(self.history, 2)
         right_wrap = QWidget()
         right_wrap.setLayout(right)
 
@@ -401,6 +403,7 @@ class FaultsPage(QWidget):
         self.clear_btn.clicked.connect(self.clear_requested.emit)
         self.bitmap.bit_clicked.connect(self._select_bit)
         self.active.itemSelectionChanged.connect(self._active_selection_changed)
+        self.can_section.chip.clicked.connect(self._show_can_detail)
 
     def set_connected(self, connected: bool) -> None:
         self._connected = connected
@@ -494,7 +497,10 @@ class FaultsPage(QWidget):
         self._render_can_section(can)
 
     def _render_can_section(self, can) -> None:
-        """Fill the labeled CAN module block: chip, reason, words, explanation."""
+        """Fill the labeled CAN module block: chip, short summary, raw words.
+
+        Kept terse — long explanations live in the detail pane via the chip's
+        click, not in this always-on band."""
         section = self.can_section
         section.chip.setText(can.label)
         set_tone(section.chip, can.tone)
@@ -506,27 +512,6 @@ class FaultsPage(QWidget):
         values = _can_value_text(can)
         section.values.setText(values)
         section.values.setVisible(bool(values))
-
-        why_lines: list[str] = []
-        if can.reasons:
-            why_lines.extend(can.reasons)
-        elif can.known:
-            why_lines.append("No CAN errors on the bus right now.")
-        else:
-            why_lines.append(can.note)
-        section.why.setText("\n".join(f"• {line}" for line in why_lines))
-        section.why.setVisible(True)
-
-        reference = (
-            f"{self._catalog.can_status.source} — {self._catalog.can_status.applies_to}. "
-            "Gen 5/CM lists the same things as separate GUI watch items. "
-            "CAN_Faults 0x00C9 is sticky: a latched bit stays readable until Clear Faults "
-            "(same button as POST/RUN). Stuck At Dominant 1 (0x0008) sets on every power-up "
-            "and is only annotated, never a trigger."
-        )
-        section.reference.setText(reference)
-        section.details_btn.setVisible(can.known)
-
     def _show_can_detail(self) -> None:  # kept for any external callers/tests
         health = self._can_health
         if health is None:

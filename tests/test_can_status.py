@@ -235,7 +235,7 @@ def test_faults_page_headline_carries_the_can_flag():
     app.processEvents()
 
 
-def test_faults_page_can_section_leads_with_the_reason():
+def test_faults_page_can_section_is_terse_until_you_click_the_chip():
     catalog = load_catalog()
     app = _app()
     page = FaultsPage(catalog)
@@ -246,13 +246,14 @@ def test_faults_page_can_section_leads_with_the_reason():
     page.update_from(clean)
     section = page.can_section
     assert section.title.text().startswith("CAN MODULE")
+    assert section.hint.text() == "click chip for details"
     assert section.chip.text() == "CAN OK"
     assert section.chip.property("tone") == "ok"
     assert section.values.text() == "Status 0000h   Faults (sticky) 0000h   Tx 0   Rx 0"
-    assert "No CAN errors on the bus right now." in section.why.text()
-    assert section.details_btn.isVisible()
-    assert not section.reference.isVisible()
+    assert "No CAN errors" in section.note.text()
     assert section.property("tone") is None  # quiet frame when healthy
+    # The detail pane stays empty until the user clicks the chip.
+    assert page.detail.toPlainText() == ""
 
     # Error Warning in the status word, ACKE + Stuff Error + Stuck At Dominant latched.
     _, _, degraded = _snapshot(catalog, status=0x0020, faults=0x000B, tx=97, rx=2)
@@ -260,18 +261,22 @@ def test_faults_page_can_section_leads_with_the_reason():
     assert section.chip.text() == "CAN degraded"
     assert section.chip.property("tone") == "warn"
     assert section.property("tone") == "warn"  # orange-framed block when degraded
-    why = section.why.text()
-    assert "Error Warning —" in why
-    assert "Acknowledge Error —" in why
-    assert "Stuck At Dominant" in why  # explained, not a trigger itself
-    assert "Gen 5/CM" in section.reference.text()
-    assert "sticky" in section.reference.text()
-
-    # Detail pane stays untouched — the user owns the selection, refresh must not blank it.
+    # The always-on note stays short — bit names only, no full explanations.
+    assert "Error Warning" in section.note.text()
+    assert "Acknowledge Error" in section.note.text()
     assert page.detail.toPlainText() == ""
+
+    # Clicking the chip routes the annotated reasons into the detail pane.
+    section.chip.clicked.emit()
+    detail = page.detail.toPlainText()
+    assert "Error Warning —" in detail
+    assert "Acknowledge Error —" in detail
+    assert "Stuck At Dominant" in detail  # explained, not a trigger itself
+    assert "clear with Clear Faults" in detail
 
     page.close()
     app.processEvents()
+
 
 
 def test_faults_page_can_section_no_feed():
@@ -284,11 +289,11 @@ def test_faults_page_can_section_no_feed():
     section = page.can_section
     assert section.chip.text() == "CAN —"
     assert section.chip.property("tone") == "dim"
-    assert "No fresh CAN status reading yet." in section.why.text()
+    assert "No fresh CAN status reading yet." in section.note.text()
     assert not section.values.isVisible()
-    assert not section.details_btn.isVisible()
     page.close()
     app.processEvents()
+
 
 
 def test_status_strip_reflects_the_can_flag():
