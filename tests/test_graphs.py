@@ -2,6 +2,8 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import QApplication
 
 from inverter_monitor.catalog import (
@@ -76,6 +78,73 @@ def test_graphs_split_enabled_and_searchable():
     app.processEvents()
     assert SPEED not in page.selected_keys()
     assert SPEED in page.picker.visible_keys(enabled=False)
+    page.close()
+    app.processEvents()
+
+
+def test_search_resets_the_chip_lists_to_the_top():
+    """A search must not keep the old scroll offset, which hides the few matches."""
+    page = _page()
+    app = QApplication.instance()
+    picker = page.picker
+    available = picker._available_scroll
+    bar = available.verticalScrollBar()
+    assert bar.maximum() > 0  # the unfiltered list is taller than the viewport
+
+    bar.setValue(bar.maximum())
+    app.processEvents()
+    picker.search.setText("module b")
+    for _ in range(5):
+        app.processEvents()
+
+    chip = picker.chip(MODULE_B)
+    assert chip.isVisible()
+    offset = chip.mapTo(available.viewport(), chip.rect().topLeft()).y()
+    assert offset >= 0, "match sits above the viewport after scrolling down"
+    assert bar.value() == 0
+    assert bar.maximum() == 0, "stale scroll range left over from the unfiltered list"
+
+    picker.search.clear()
+    for _ in range(5):
+        app.processEvents()
+    assert picker.chip(MODULE_B).mapTo(available.viewport(), picker.chip(MODULE_B).rect().topLeft()).y() >= 0
+    page.close()
+    app.processEvents()
+
+
+def test_user_scroll_survives_a_chip_toggle():
+    """Pin-to-top is released by a real scroll, so browsing stays where the user left it."""
+    page = _page()
+    app = QApplication.instance()
+    available = page.picker._available_scroll
+    bar = available.verticalScrollBar()
+    page.picker.search.setText("module")
+    app.processEvents()
+    page.picker.search.clear()
+    app.processEvents()
+    assert available._pin_top
+
+    for _ in range(6):
+        app.sendEvent(
+            available.viewport(),
+            QWheelEvent(
+                QPointF(10, 10),
+                QPointF(10, 10),
+                QPoint(0, 0),
+                QPoint(0, -120),
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+                Qt.ScrollPhase.NoScrollPhase,
+                False,
+            ),
+        )
+        app.processEvents()
+    assert not available._pin_top
+    assert bar.value() > 0
+
+    page.picker.chip(MODULE_B).setChecked(True)
+    app.processEvents()
+    assert bar.value() > 0, "the user's scroll position was thrown away by a rebuild"
     page.close()
     app.processEvents()
 

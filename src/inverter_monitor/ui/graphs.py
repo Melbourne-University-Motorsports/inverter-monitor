@@ -178,6 +178,7 @@ class _FlowHost(QWidget):
         self.flow = _FlowLayout(self)
         self.setLayout(self.flow)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self._minimum_height = -1
 
     def hasHeightForWidth(self) -> bool:  # noqa: N802
         return True
@@ -185,25 +186,66 @@ class _FlowHost(QWidget):
     def heightForWidth(self, width: int) -> int:  # noqa: N802
         return self.flow.heightForWidth(width)
 
+    def sync_minimum_height(self) -> None:
+        """Match the host height to the chips currently in the flow.
+
+        Chips are hidden and re-parented on every rebuild, which changes the
+        wrapping height. Without this the host keeps the height it had before
+        the filter, so the scroll area keeps a stale range and the list looks
+        half empty (or scrolled past the matches) after a search.
+        """
+        height = self.heightForWidth(max(1, self.width()))
+        if height != self._minimum_height:
+            self._minimum_height = height
+            self.setMinimumHeight(height)
+            self.updateGeometry()
+
+    def event(self, event) -> bool:  # noqa: N802
+        # A pending layout request means the chips changed: recompute the height.
+        if event.type() == QEvent.Type.LayoutRequest:
+            self.sync_minimum_height()
+        return super().event(event)
+
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
-        self.setMinimumHeight(self.heightForWidth(max(1, self.width())))
+        self.sync_minimum_height()
 
 
 class _ChipScroll(QScrollArea):
-    def __init__(self, host: QWidget, parent: QWidget | None = None) -> None:
+    def __init__(self, host: _FlowHost, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWidgetResizable(True)
         self.setFrameShape(QScrollArea.Shape.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setWidget(host)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self._pin_top = False
+        bar = self.verticalScrollBar()
+        # The range is only recalculated once the flow host has been laid out,
+        # so a one-shot reset would be undone: hold the top until the user scrolls.
+        bar.rangeChanged.connect(lambda *_: self._apply_pin())
+        bar.actionTriggered.connect(lambda *_: self._release_pin())
+        bar.sliderPressed.connect(self._release_pin)
 
     def sizeHint(self) -> QSize:  # noqa: N802
         return QSize(280, 140)
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
         return QSize(160, 72)
+
+    def pin_to_top(self) -> None:
+        """Scroll back to the first row and keep it there until the user scrolls."""
+        self._pin_top = True
+        self._apply_pin()
+
+    def _apply_pin(self) -> None:
+        if not self._pin_top:
+            return
+        bar = self.verticalScrollBar()
+        bar.setValue(bar.minimum())
+
+    def _release_pin(self, *_args) -> None:
+        self._pin_top = False
 
 
 class SignalPicker(QWidget):
@@ -236,8 +278,11 @@ class SignalPicker(QWidget):
 
         self._enabled_host = _FlowHost()
         self._available_host = _FlowHost()
+        self._enabled_scroll = _ChipScroll(self._enabled_host)
+        self._available_scroll = _ChipScroll(self._available_host)
         self._park = QWidget()
         self._park.hide()
+        self._last_query = self.search.text()
 
         for key in self._keys:
             chip = QCheckBox(graph_signal_label(key))
@@ -255,7 +300,7 @@ class SignalPicker(QWidget):
         enabled_box.setContentsMargins(0, 0, 0, 0)
         enabled_box.setSpacing(4)
         enabled_box.addWidget(self.enabled_heading)
-        enabled_box.addWidget(_ChipScroll(self._enabled_host), 1)
+        enabled_box.addWidget(self._enabled_scroll, 1)
         enabled_wrap = QWidget()
         enabled_wrap.setLayout(enabled_box)
 
@@ -263,7 +308,7 @@ class SignalPicker(QWidget):
         available_box.setContentsMargins(0, 0, 0, 0)
         available_box.setSpacing(4)
         available_box.addWidget(self.available_heading)
-        available_box.addWidget(_ChipScroll(self._available_host), 1)
+        available_box.addWidget(self._available_scroll, 1)
         available_wrap = QWidget()
         available_wrap.setLayout(available_box)
 
@@ -318,6 +363,8 @@ class SignalPicker(QWidget):
             self._clear_flow(self._enabled_host)
             self._clear_flow(self._available_host)
             query = self.search.text()
+            new_query = query != self._last_query
+            self._last_query = query
             shown_enabled = 0
             shown_available = 0
             for key in self._keys:
@@ -342,6 +389,11 @@ class SignalPicker(QWidget):
             self.match_count.setText(f"{total} shown" if query.strip() else "")
             self._enabled_host.updateGeometry()
             self._available_host.updateGeometry()
+            # A new search starts at the top of both lists: the old scroll offset
+            # would otherwise hide the few matching chips above the viewport.
+            if new_query:
+                for scroll in (self._enabled_scroll, self._available_scroll):
+                    scroll.pin_to_top()
         finally:
             self._rebuilding = False
 
