@@ -40,6 +40,7 @@ CAN), no auto-connect, close RMS GUI first (COM port is exclusive).
 | `data/defsyms.yaml` | [EEPROM](/inverter/eeprom.md) | G3 Memory-View addresses |
 | `data/vsm_states.yaml` | [VSM](/inverter/vsm.md), [inverter mode](/inverter/inverter-mode.md) | State descriptions |
 | `data/faults.yaml` | [diagnostics](/inverter/faults-diagnostics.md) | Fault text |
+| `data/can_status.yaml` | [CAN status](/can/can-status.md) | Gen 3 CAN_Status/CAN_Faults bit maps + error counters |
 | `profiles/default.yaml` | [transport](/can/transport.md) | Bus, channel, offset |
 
 ## UI mapping
@@ -48,7 +49,10 @@ Status strip (VSM/enable/command-mode/inverter-mode/fault count) ←
 [internal states](/can/internal-states.md), with the VSM one-liner following
 live command mode (CAN wording unless mode = 1); Overview (speed/torque/DC/temps/flags)
 ← [broadcast](/can/broadcast-catalog.md); Faults (raw + decoded, POST needs
-CAN) ← [fault codes](/can/fault-codes.md); Graphs ← M165–M168/M172/M176;
+CAN) ← [fault codes](/can/fault-codes.md); the Faults tab also polls the CAN
+module's own words (`0x00C8`/`0x00C9`/`0x00CC`/`0x00CD`) and shows a
+[CAN health](/can/can-status.md) chip, which the strip's `FAULTS` element
+picks up as `· CAN DEGRADED` / `· CAN BUS OFF`; Graphs ← M165–M168/M172/M176;
 Symbols ← [Memory View](/inverter/memory-view.md) watch list; Calibration ←
 resolver delay / gamma RAM iteration, optional EEPROM persist; Raw ← last
 frame per ID; States ← [VSM](/inverter/vsm.md) with per-mode descriptions

@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSpinBox, QVBoxLayout, QWidget
 
 from inverter_monitor.catalog import Catalog
+from inverter_monitor.can_health import FAULT, evaluate_can_health
 from inverter_monitor.store import (
     COMMAND_MODE_KEYS,
     StoreSnapshot,
@@ -193,8 +194,19 @@ class StatusStrip(Card):
         self.mode.setText(mode.enum_name.replace("_", " ") if mode and mode.enum_name else "MODE —")
         self.inv.setText(inv.enum_name.replace("_", " ") if inv and inv.enum_name else "INVERTER —")
         fault_count = len(snapshot.active_faults)
-        self.faults.setText(f"FAULTS {fault_count}")
-        set_tone(self.faults, "fault" if fault_count else "ok")
+        can = evaluate_can_health(snapshot, self._catalog)
+        text = f"FAULTS {fault_count}"
+        tone = "fault" if fault_count else "ok"
+        tooltip = ""
+        if can.degraded:
+            # Same element, no extra badge: POST/RUN faults keep the count, the
+            # CAN module's own flag rides along in orange (or red when bus off).
+            text = f"{text} · {'CAN BUS OFF' if can.level == FAULT else 'CAN DEGRADED'}"
+            tone = "fault" if can.level == FAULT else "warn"
+            tooltip = can.note
+        self.faults.setText(text)
+        set_tone(self.faults, tone)
+        self.faults.setToolTip(tooltip)
         self.source.setText(source_label.upper() if running else "DISCONNECTED")
         set_tone(self.source, None)
         self.rate.setText(f"{snapshot.frames_per_sec:.0f} fps")
@@ -207,6 +219,7 @@ class StatusStrip(Card):
         self.inv.setText("INVERTER —")
         self.faults.setText("FAULTS —")
         set_tone(self.faults, "dim")
+        self.faults.setToolTip("")
         self.source.setText("DISCONNECTED")
         set_tone(self.source, "warn" if lost_reason else "dim")
         self.rate.setText("0 fps")

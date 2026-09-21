@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from inverter_monitor.catalog import Catalog, FaultBit
+from inverter_monitor.can_health import evaluate_can_health
 from inverter_monitor.store import StoreSnapshot, get_signal
 from inverter_monitor.ui.theme import (
     ACCENT,
@@ -50,6 +51,9 @@ _BIT_SIZE = 13
 _BIT_GAP = 3
 _BANK_GAP = 10
 _ROW_H = 26
+# Rows the Active list shows before it starts scrolling — the list must not
+# reserve space it has no rows for.
+_ACTIVE_ROWS_VISIBLE = 8
 
 
 def _severity_color(severity: str) -> str:
@@ -63,6 +67,24 @@ def _severity_color(severity: str) -> str:
 def _bank(bit: int | FaultBit) -> str:
     number = bit.bit if isinstance(bit, FaultBit) else bit
     return "POST" if number < 32 else "RUN"
+
+
+def _counter_label(name: str) -> str:
+    short = name.removeprefix("CAN_").replace("_Error_Counter", "")
+    return short.replace("_(Max)", " (max)") or name
+
+
+def _can_value_text(health) -> str:
+    """Labeled raw words and error counters, e.g. 'Status 0020h · Faults (sticky) 0003h · Tx 12'."""
+    if not health.known:
+        return ""
+    parts: list[str] = []
+    if health.status_word is not None:
+        parts.append(f"Status {health.status_word:04X}h")
+    if health.fault_word is not None:
+        parts.append(f"Faults (sticky) {health.fault_word:04X}h")
+    parts.extend(f"{_counter_label(name)} {value}" for name, value in health.counters)
+    return "   ".join(parts)
 
 
 class FaultBitMap(QWidget):
@@ -178,6 +200,63 @@ class FaultBitMap(QWidget):
         super().leaveEvent(event)
 
 
+class _CanChip(QLabel):
+    """Clickable CAN chip — clicking puts the full annotated text into the
+    parent page's detail pane."""
+
+    clicked = Signal()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: ARG002
+        self.clicked.emit()
+        super().mousePressEvent(event)
+
+
+class _CanStatusSection(Card):
+    """The CAN module's own card: heading + chip + one-line summary + raw words.
+
+    Kept terse by design — detailed explanations are one click away on the chip
+    (which routes the full annotated text into the detail pane) rather than
+    living in the always-on card.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(*CARD_MARGINS)
+        layout.setSpacing(6)
+
+        head = QHBoxLayout()
+        head.setContentsMargins(0, 0, 0, 0)
+        self.title = QLabel("CAN FAULTS (Gen 3 Memory View)")
+        self.title.setObjectName("muted")
+        head.addWidget(self.title, 1)
+        self.hint = QLabel("click chip for details")
+        self.hint.setObjectName("muted")
+        head.addWidget(self.hint)
+        layout.addLayout(head)
+
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        self.chip = _CanChip("CAN —")
+        self.chip.setObjectName("flagChip")
+        self.chip.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        top.addWidget(self.chip)
+        top.addStretch(1)
+        self.values = QLabel("")
+        self.values.setFont(mono_font(11))
+        set_tone(self.values, "dim")
+        top.addWidget(self.values)
+        layout.addLayout(top)
+        # The summary gets the card's full width — sharing the chip row squeezed
+        # it into a three-word column.
+        self.note = QLabel("")
+        self.note.setObjectName("muted")
+        self.note.setWordWrap(True)
+        layout.addWidget(self.note)
+
+
+
 class FaultsPage(QWidget):
     clear_requested = Signal()
 
@@ -189,6 +268,7 @@ class FaultsPage(QWidget):
         self._selected_bit: int | None = None
         self._active_ids: tuple[int, ...] = ()
         self._history_key: tuple[tuple[float, int, bool], ...] = ()
+        self._can_health = None
 
         self.headline = QLabel("NO DATA")
         self.headline.setObjectName("faultHeadline")
@@ -224,11 +304,25 @@ class FaultsPage(QWidget):
         head.addLayout(tools)
 
         self.bitmap = FaultBitMap(catalog)
+        self.map_heading = QLabel("INVERTER FAULTS (POST / RUN)")
+        self.map_heading.setObjectName("muted")
+
+        self.can_section = _CanStatusSection()
+
         map_card = Card()
         map_layout = QVBoxLayout(map_card)
         map_layout.setContentsMargins(*CARD_MARGINS)
+        map_layout.addWidget(self.map_heading)
         map_layout.addWidget(self.bitmap)
+        map_layout.addStretch(1)
         map_layout.addWidget(self.command_status)
+
+        # Inverter faults and CAN faults are separate subsystems — one card each
+        # rather than one card with a CAN block bolted to the bottom.
+        cards = QHBoxLayout()
+        cards.setSpacing(8)
+        cards.addWidget(map_card, 3)
+        cards.addWidget(self.can_section, 2)
 
         self.active = QTableWidget(0, 3)
         self.active.setHorizontalHeaderLabels(["", "Name", "Bit"])
@@ -239,16 +333,18 @@ class FaultsPage(QWidget):
         self.active.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.active.verticalHeader().setVisible(False)
         self.active.setShowGrid(False)
-        self.active.setMinimumHeight(120)
+        self.active.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        self.empty = QLabel("No active faults.")
+        self.empty = QLabel("No active inverter faults.")
         self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty.setObjectName("emptyState")
         set_tone(self.empty, "ok")
 
         self.detail = QTextEdit()
         self.detail.setReadOnly(True)
-        self.detail.setMaximumHeight(120)
+        self.detail.setPlaceholderText(
+            "Click a bit in the map or the CAN chip to see the explanation here."
+        )
 
         self.history = QTableWidget(0, 3)
         self.history.setHorizontalHeaderLabels(["Time", "", "Name"])
@@ -260,36 +356,45 @@ class FaultsPage(QWidget):
         self.history.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.history.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
+        # Left column: the active list only ever takes the height its rows need
+        # (see _fit_active_height) and the log below it absorbs the slack.
+        # Right column: one full-height Details pane, so a 5-bullet CAN or bit
+        # explanation reads without a scrollbar.
         left = QVBoxLayout()
         left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(6)
         active_title = QLabel("Active")
         active_title.setObjectName("muted")
         left.addWidget(active_title)
         left.addWidget(self.empty)
-        left.addWidget(self.active, 1)
-        left.addWidget(self.detail)
+        left.addWidget(self.active)
+        hist_title = QLabel("History")
+        hist_title.setObjectName("muted")
+        left.addWidget(hist_title)
+        left.addWidget(self.history, 1)
         left_wrap = QWidget()
         left_wrap.setLayout(left)
 
         right = QVBoxLayout()
         right.setContentsMargins(0, 0, 0, 0)
-        hist_title = QLabel("History")
-        hist_title.setObjectName("muted")
-        right.addWidget(hist_title)
-        right.addWidget(self.history, 1)
+        right.setSpacing(6)
+        detail_title = QLabel("Details")
+        detail_title.setObjectName("muted")
+        right.addWidget(detail_title)
+        right.addWidget(self.detail, 1)
         right_wrap = QWidget()
         right_wrap.setLayout(right)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(left_wrap)
         splitter.addWidget(right_wrap)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(*PAGE_MARGINS)
         root.addLayout(head)
-        root.addWidget(map_card)
+        root.addLayout(cards)
         root.addWidget(splitter, 1)
 
         self.auto_refresh.toggled.connect(self._auto_toggled)
@@ -297,6 +402,7 @@ class FaultsPage(QWidget):
         self.clear_btn.clicked.connect(self.clear_requested.emit)
         self.bitmap.bit_clicked.connect(self._select_bit)
         self.active.itemSelectionChanged.connect(self._active_selection_changed)
+        self.can_section.chip.clicked.connect(self._show_can_detail)
 
     def set_connected(self, connected: bool) -> None:
         self._connected = connected
@@ -327,19 +433,35 @@ class FaultsPage(QWidget):
         post_n = sum(1 for bit in faults if bit.bit < 32)
         run_n = len(faults) - post_n
         has_feed = any(get_signal(snapshot, key) for key in _FAULT_FEED_KEYS)
+        can = evaluate_can_health(snapshot, self._catalog)
+        self._can_health = can
+
+        fault_text: str
+        fault_tone: str
         if not has_feed and not faults:
-            self.headline.setText("NO DATA")
-            set_tone(self.headline, "dim")
-            self.counts.setText("")
+            fault_text, fault_tone = "NO DATA", "dim"
         elif not faults:
-            self.headline.setText("ALL CLEAR")
-            set_tone(self.headline, "ok")
-            self.counts.setText("")
+            fault_text, fault_tone = "ALL CLEAR", "ok"
         else:
-            label = "1 FAULT" if len(faults) == 1 else f"{len(faults)} FAULTS"
-            self.headline.setText(label)
-            set_tone(self.headline, "fault")
-            parts = []
+            fault_text = "1 FAULT" if len(faults) == 1 else f"{len(faults)} FAULTS"
+            fault_tone = "fault"
+
+        # With no inverter faults, a degraded CAN leads the headline rather than
+        # hiding behind "ALL CLEAR". With faults, the fault count leads and the
+        # CAN story stays in the sub-line.
+        if can.degraded and not faults:
+            self.headline.setText(can.label)
+            set_tone(self.headline, can.tone)
+        else:
+            self.headline.setText(fault_text)
+            set_tone(self.headline, fault_tone)
+
+        parts = []
+        if not has_feed and not faults:
+            parts.append("No CAN notes, no fault words — nothing to report.")
+        elif not faults:
+            parts.append("No inverter faults (POST/RUN all clear)")
+        else:
             if post_n:
                 parts.append(f"{post_n} POST")
             if run_n:
@@ -347,7 +469,9 @@ class FaultsPage(QWidget):
             latching = sum(1 for bit in faults if bit.latching)
             if latching:
                 parts.append(f"{latching} latching — needs power cycle")
-            self.counts.setText(" · ".join(parts))
+        if can.degraded:
+            parts.append(f"CAN: {can.note}")
+        self.counts.setText(" · ".join(parts))
 
         active_ids = tuple(bit.bit for bit in faults)
         self.bitmap.set_state(set(active_ids), self._selected_bit)
@@ -366,6 +490,51 @@ class FaultsPage(QWidget):
             self._show_detail(self._selected_bit, set(active_ids))
         elif faults:
             self._show_detail(faults[0].bit, set(active_ids))
+        # Detail stays untouched when nothing is selected — the user may have
+        # clicked a bit and we must not blank it on every refresh.
+
+        self._render_can_section(can)
+
+    def _render_can_section(self, can) -> None:
+        """Fill the labeled CAN module block: chip, short summary, raw words.
+
+        Kept terse — long explanations live in the detail pane via the chip's
+        click, not in this always-on band."""
+        section = self.can_section
+        section.chip.setText(can.label)
+        set_tone(section.chip, can.tone)
+        # Tint the block only when there is something to say — healthy CAN
+        # keeps the default quiet border so it does not draw the eye.
+        set_tone(section, can.tone if can.degraded else None)
+        section.note.setText(can.note)
+
+        values = _can_value_text(can)
+        section.values.setText(values)
+        section.values.setVisible(bool(values))
+    def _show_can_detail(self) -> None:  # kept for any external callers/tests
+        health = self._can_health
+        if health is None:
+            return
+        lines = [health.label, health.note, ""]
+        values = _can_value_text(health)
+        if values:
+            lines.extend([values, ""])
+        if health.reasons:
+            lines.extend(f"• {reason}" for reason in health.reasons)
+        elif health.known:
+            lines.append("No CAN errors on the bus right now.")
+        lines.extend(
+            [
+                "",
+                f"CAN_Status 0x00C8 and CAN_Faults 0x00C9 are shadow registers of the CAN module",
+                f"(CAN Protocol {self._catalog.can_status.source}).",
+            ]
+        )
+        applies_to = self._catalog.can_status.applies_to
+        if applies_to:
+            lines.append(f"{applies_to} map — Gen 5/CM reports the same things as separate watch items.")
+        lines.append("Latched CAN fault bits clear with Clear Faults, like POST/RUN faults.")
+        self.detail.setPlainText("\n".join(lines))
 
     def _fill_active(self, faults: tuple[FaultBit, ...]) -> None:
         selected = self._selected_bit
@@ -390,6 +559,14 @@ class FaultsPage(QWidget):
         else:
             self.active.clearSelection()
         self.active.blockSignals(False)
+        self._fit_active_height()
+
+    def _fit_active_height(self) -> None:
+        """Size the active list to its rows (scrolls past _ACTIVE_ROWS_VISIBLE)."""
+        rows = max(1, min(self.active.rowCount(), _ACTIVE_ROWS_VISIBLE))
+        row_h = self.active.verticalHeader().defaultSectionSize()
+        frame = 2 * self.active.frameWidth()
+        self.active.setFixedHeight(self.active.horizontalHeader().height() + rows * row_h + frame + 2)
 
     def _fill_history(self, snapshot: StoreSnapshot) -> None:
         events = list(reversed(snapshot.fault_history))
