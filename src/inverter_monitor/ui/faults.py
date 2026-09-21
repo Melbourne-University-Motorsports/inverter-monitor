@@ -6,7 +6,6 @@ from PySide6.QtCore import QRect, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QMouseEvent, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import (
     QCheckBox,
-    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -52,6 +51,9 @@ _BIT_SIZE = 13
 _BIT_GAP = 3
 _BANK_GAP = 10
 _ROW_H = 26
+# Rows the Active list shows before it starts scrolling — the list must not
+# reserve space it has no rows for.
+_ACTIVE_ROWS_VISIBLE = 8
 
 
 def _severity_color(severity: str) -> str:
@@ -198,21 +200,6 @@ class FaultBitMap(QWidget):
         super().leaveEvent(event)
 
 
-class _FramedSection(QFrame):
-    """Bordered sub-panel inside a card, tinted by tone (border + background)."""
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("subCard")
-
-    def set_tone(self, tone: str | None) -> None:  # noqa: N802 (Qt property naming)
-        if self.property("tone") == tone:
-            return
-        self.setProperty("tone", tone)
-        self.style().unpolish(self)
-        self.style().polish(self)
-
-
 class _CanChip(QLabel):
     """Clickable CAN chip — clicking puts the full annotated text into the
     parent page's detail pane."""
@@ -224,23 +211,23 @@ class _CanChip(QLabel):
         super().mousePressEvent(event)
 
 
-class _CanStatusSection(_FramedSection):
-    """Labeled CAN module block: heading + chip + short summary + raw words.
+class _CanStatusSection(Card):
+    """The CAN module's own card: heading + chip + one-line summary + raw words.
 
-    The panel stays terse by design — detailed explanations are one click away
-    on the chip (which routes the full annotated text into the detail pane)
-    rather than living in the always-on sub-panel.
+    Kept terse by design — detailed explanations are one click away on the chip
+    (which routes the full annotated text into the detail pane) rather than
+    living in the always-on card.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 6, 10, 6)
-        layout.setSpacing(3)
+        layout.setContentsMargins(*CARD_MARGINS)
+        layout.setSpacing(6)
 
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 0)
-        self.title = QLabel("CAN MODULE (Gen 3 Memory View)")
+        self.title = QLabel("CAN FAULTS (Gen 3 Memory View)")
         self.title.setObjectName("muted")
         head.addWidget(self.title, 1)
         self.hint = QLabel("click chip for details")
@@ -255,15 +242,18 @@ class _CanStatusSection(_FramedSection):
         self.chip.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
         top.addWidget(self.chip)
-        self.note = QLabel("")
-        self.note.setObjectName("muted")
-        self.note.setWordWrap(True)
-        top.addWidget(self.note, 1)
+        top.addStretch(1)
         self.values = QLabel("")
         self.values.setFont(mono_font(11))
         set_tone(self.values, "dim")
         top.addWidget(self.values)
         layout.addLayout(top)
+        # The summary gets the card's full width — sharing the chip row squeezed
+        # it into a three-word column.
+        self.note = QLabel("")
+        self.note.setObjectName("muted")
+        self.note.setWordWrap(True)
+        layout.addWidget(self.note)
 
 
 
@@ -314,19 +304,25 @@ class FaultsPage(QWidget):
         head.addLayout(tools)
 
         self.bitmap = FaultBitMap(catalog)
-        self.map_heading = QLabel("Inverter POST / RUN fault words")
+        self.map_heading = QLabel("INVERTER FAULTS (POST / RUN)")
         self.map_heading.setObjectName("muted")
 
         self.can_section = _CanStatusSection()
-        self.can_section.setObjectName("subCard")
 
         map_card = Card()
         map_layout = QVBoxLayout(map_card)
         map_layout.setContentsMargins(*CARD_MARGINS)
         map_layout.addWidget(self.map_heading)
         map_layout.addWidget(self.bitmap)
-        map_layout.addWidget(self.can_section)
+        map_layout.addStretch(1)
         map_layout.addWidget(self.command_status)
+
+        # Inverter faults and CAN faults are separate subsystems — one card each
+        # rather than one card with a CAN block bolted to the bottom.
+        cards = QHBoxLayout()
+        cards.setSpacing(8)
+        cards.addWidget(map_card, 3)
+        cards.addWidget(self.can_section, 2)
 
         self.active = QTableWidget(0, 3)
         self.active.setHorizontalHeaderLabels(["", "Name", "Bit"])
@@ -337,7 +333,7 @@ class FaultsPage(QWidget):
         self.active.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.active.verticalHeader().setVisible(False)
         self.active.setShowGrid(False)
-        self.active.setMinimumHeight(120)
+        self.active.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.empty = QLabel("No active inverter faults.")
         self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -360,42 +356,45 @@ class FaultsPage(QWidget):
         self.history.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.history.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
+        # Left column: the active list only ever takes the height its rows need
+        # (see _fit_active_height) and the log below it absorbs the slack.
+        # Right column: one full-height Details pane, so a 5-bullet CAN or bit
+        # explanation reads without a scrollbar.
         left = QVBoxLayout()
         left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(6)
         active_title = QLabel("Active")
         active_title.setObjectName("muted")
         left.addWidget(active_title)
         left.addWidget(self.empty)
-        left.addWidget(self.active, 1)
+        left.addWidget(self.active)
+        hist_title = QLabel("History")
+        hist_title.setObjectName("muted")
+        left.addWidget(hist_title)
+        left.addWidget(self.history, 1)
         left_wrap = QWidget()
         left_wrap.setLayout(left)
 
         right = QVBoxLayout()
         right.setContentsMargins(0, 0, 0, 0)
+        right.setSpacing(6)
         detail_title = QLabel("Details")
         detail_title.setObjectName("muted")
         right.addWidget(detail_title)
-        # Details reads first and typically holds a 5-bullet CAN / bit
-        # explanation — give it breathing room instead of letting history
-        # (which is read-only and scrolls) take the space.
-        right.addWidget(self.detail, 3)
-        hist_title = QLabel("History")
-        hist_title.setObjectName("muted")
-        right.addWidget(hist_title)
-        right.addWidget(self.history, 2)
+        right.addWidget(self.detail, 1)
         right_wrap = QWidget()
         right_wrap.setLayout(right)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(left_wrap)
         splitter.addWidget(right_wrap)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(*PAGE_MARGINS)
         root.addLayout(head)
-        root.addWidget(map_card)
+        root.addLayout(cards)
         root.addWidget(splitter, 1)
 
         self.auto_refresh.toggled.connect(self._auto_toggled)
@@ -506,7 +505,7 @@ class FaultsPage(QWidget):
         set_tone(section.chip, can.tone)
         # Tint the block only when there is something to say — healthy CAN
         # keeps the default quiet border so it does not draw the eye.
-        section.set_tone(can.tone if can.degraded else None)
+        set_tone(section, can.tone if can.degraded else None)
         section.note.setText(can.note)
 
         values = _can_value_text(can)
@@ -560,6 +559,14 @@ class FaultsPage(QWidget):
         else:
             self.active.clearSelection()
         self.active.blockSignals(False)
+        self._fit_active_height()
+
+    def _fit_active_height(self) -> None:
+        """Size the active list to its rows (scrolls past _ACTIVE_ROWS_VISIBLE)."""
+        rows = max(1, min(self.active.rowCount(), _ACTIVE_ROWS_VISIBLE))
+        row_h = self.active.verticalHeader().defaultSectionSize()
+        frame = 2 * self.active.frameWidth()
+        self.active.setFixedHeight(self.active.horizontalHeader().height() + rows * row_h + frame + 2)
 
     def _fill_history(self, snapshot: StoreSnapshot) -> None:
         events = list(reversed(snapshot.fault_history))

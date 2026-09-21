@@ -245,7 +245,12 @@ def test_faults_page_can_section_is_terse_until_you_click_the_chip():
     _, _, clean = _snapshot(catalog, status=0x0000, faults=0x0000, tx=0, rx=0)
     page.update_from(clean)
     section = page.can_section
-    assert section.title.text().startswith("CAN MODULE")
+    assert section.title.text().startswith("CAN FAULTS")
+    # Inverter faults and CAN faults are separate cards: the CAN card holds no
+    # part of the POST/RUN map, and it carries its own tone.
+    assert page.map_heading.text().startswith("INVERTER FAULTS")
+    assert section.findChild(type(page.bitmap)) is None
+    assert section is not page.bitmap.parent()
     assert section.hint.text() == "click chip for details"
     assert section.chip.text() == "CAN OK"
     assert section.chip.property("tone") == "ok"

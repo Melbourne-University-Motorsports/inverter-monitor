@@ -105,6 +105,11 @@ def apply_theme(app: QApplication) -> None:
             border: 1px solid {BORDER};
             border-radius: 8px;
         }}
+        /* A card only gains a tone when its own subsystem is in trouble; the
+           inverter card and a healthy CAN card keep the quiet border. */
+        QFrame#card[tone="warn"] {{ border-color: {WARN}; }}
+        QFrame#card[tone="fault"] {{ border-color: {FAULT}; }}
+        QFrame#card[tone="ok"] {{ border-color: {OK}; }}
 
         /* Labeled section inside a card (e.g. the CAN module block). The base
            style keeps it quiet; a tone adds a soft left-accent background. */
