@@ -48,7 +48,8 @@ DISCHARGE_STATE_ADDRESS = 0x0087
 DIN_ADDRESSES = (0x009B, 0x009C, 0x009A, 0x00B8, 0x00B1, 0x00B2, 0x005B, 0x005E)
 RLY_ADDRESSES = (0x00B4, 0x00B5, 0x00B3, 0x00BB)
 
-# Always-visible strip + Faults / States. Other tabs overlay a larger set.
+# Always-visible strip. Every tab overlays this so VSM / enable / faults stay live
+# even when the Symbols watch list is empty.
 STATUS_WATCH_ADDRESSES = (
     VSM_STATE_ADDRESS,
     INVERTER_ENABLE_ADDRESS,
@@ -70,16 +71,9 @@ CAN_STATUS_WATCH_ADDRESSES = (
     CAN_RX_ERROR_ADDRESS,
 )
 
-# Overview / Raw, and the Symbols “reload default” list.
+# Overview / Raw extras on top of STATUS_WATCH_ADDRESSES.
 # Graphs overlays the selected traces; EEPROM is a one-shot dump on connect.
-DEFAULT_WATCH_ADDRESSES = (
-    VSM_STATE_ADDRESS,
-    INVERTER_ENABLE_ADDRESS,
-    INVERTER_MODE_ADDRESS,
-    POST_FAULT_LO_ADDRESS,
-    POST_FAULT_HI_ADDRESS,
-    RUN_FAULT_LO_ADDRESS,
-    RUN_FAULT_HI_ADDRESS,
+OVERVIEW_WATCH_ADDRESSES = (
     FEEDBACK_SPEED_ADDRESS,
     COMMANDED_TORQUE_ADDRESS,
     FEEDBACK_TORQUE_ADDRESS,
@@ -91,6 +85,14 @@ DEFAULT_WATCH_ADDRESSES = (
     *DIN_ADDRESSES,
     *RLY_ADDRESSES,
 )
+
+# Symbols starts empty; “reload default” restores the home-screen set below.
+# Other tabs poll on their own.
+DEFAULT_WATCH_ADDRESSES: tuple[int, ...] = ()
+
+# What the Symbols “reload default” button installs: everything Overview and the
+# status strip read over RS232.
+RELOAD_WATCH_ADDRESSES = (*STATUS_WATCH_ADDRESSES, *OVERVIEW_WATCH_ADDRESSES)
 
 # RMS GUI EEPROM page ids (defsyms column 6), then Memory View section names.
 EEPROM_GROUP_NAMES = {

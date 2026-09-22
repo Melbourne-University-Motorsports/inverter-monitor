@@ -17,8 +17,8 @@ from PySide6.QtWidgets import (
 
 from inverter_monitor.catalog import Catalog
 from inverter_monitor.memory_map import (
-    DEFAULT_WATCH_ADDRESSES,
     LIVE_GROUP_ORDER,
+    RELOAD_WATCH_ADDRESSES,
     WatchList,
     live_symbols,
 )
@@ -149,15 +149,15 @@ class SymbolsPage(QWidget):
             self.watches_changed.emit()
 
     def _reload_default(self) -> None:
-        if self._watch.addresses() == DEFAULT_WATCH_ADDRESSES:
+        if self._watch.addresses() == RELOAD_WATCH_ADDRESSES:
             return
-        self._watch.replace(DEFAULT_WATCH_ADDRESSES)
+        self._watch.replace(RELOAD_WATCH_ADDRESSES)
         self._refresh_watch_rows()
         self._sync_reload_enabled()
         self.watches_changed.emit()
 
     def _sync_reload_enabled(self) -> None:
-        self.reload_btn.setEnabled(self._watch.addresses() != DEFAULT_WATCH_ADDRESSES)
+        self.reload_btn.setEnabled(self._watch.addresses() != RELOAD_WATCH_ADDRESSES)
 
     def _refresh_watch_rows(self) -> None:
         symbols = [

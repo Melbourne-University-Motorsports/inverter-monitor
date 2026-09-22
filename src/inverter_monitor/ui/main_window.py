@@ -34,6 +34,7 @@ from inverter_monitor.memory_map import (
     CLEAR_FAULTS_ADDRESS,
     DEFAULT_CAN_ID_OFFSET,
     DEFAULT_WATCH_ADDRESSES,
+    OVERVIEW_WATCH_ADDRESSES,
     STATUS_WATCH_ADDRESSES,
     MemoryPoller,
     WatchList,
@@ -143,6 +144,7 @@ class MainWindow(QMainWindow):
         self.raw = RawPage()
         self.states = StatesPage(catalog)
         self.symbols = SymbolsPage(catalog, self.watch_list)
+        self.symbols.watches_changed.connect(self._sync_poll_set)
         self.eeprom = EepromPage(catalog)
         self.eeprom.pull_requested.connect(self._pull_eeprom)
         self.eeprom.push_requested.connect(self._push_eeprom)
@@ -151,7 +153,7 @@ class MainWindow(QMainWindow):
         self._push_cancelled = False
         self._push_remaining: list[tuple[int, int]] = []
         self._push_head: tuple[int, int] | None = None
-        self._push_head_sig: tuple[bool, str | None] | None = None
+        self._push_head_count: int | None = None
         self._push_results: dict[int, bool] = {}
         self._push_errors: dict[int, str] = {}
         self._push_dialog: EepromPushDialog | None = None
@@ -257,23 +259,22 @@ class MainWindow(QMainWindow):
     def _sync_poll_set(self, _index: int = 0) -> None:
         current = self.tabs.currentWidget()
         if current is self.symbols:
-            self.poller.set_active_addresses(None)
-            return
-        if current is self.graphs:
-            addresses = (*STATUS_WATCH_ADDRESSES, *self.graphs.poll_addresses())
+            extra = self.watch_list.addresses()
+        elif current is self.graphs:
+            extra = self.graphs.poll_addresses()
         elif current is self.calibration:
-            addresses = (*STATUS_WATCH_ADDRESSES, *self.calibration.poll_addresses())
+            extra = self.calibration.poll_addresses()
         elif current is self.faults:
-            # Faults tab also reads the CAN module's status/fault words and error
+            # Faults also reads the CAN module's status/fault words and error
             # counters (Gen 3 memory view) so the CAN flag has something to show.
-            addresses = (*STATUS_WATCH_ADDRESSES, *CAN_STATUS_WATCH_ADDRESSES)
-        elif current is self.states:
-            addresses = STATUS_WATCH_ADDRESSES
+            extra = CAN_STATUS_WATCH_ADDRESSES
         elif current is self.eeprom:
-            addresses = (*STATUS_WATCH_ADDRESSES, EEPROM_STATE_ADDRESS)
+            extra = (EEPROM_STATE_ADDRESS,)
+        elif current is self.overview or current is self.raw:
+            extra = OVERVIEW_WATCH_ADDRESSES
         else:
-            addresses = DEFAULT_WATCH_ADDRESSES
-        self.poller.set_active_addresses(addresses)
+            extra = ()
+        self.poller.set_active_addresses((*STATUS_WATCH_ADDRESSES, *extra))
 
     def _sync_eeprom_tab(self) -> None:
         index = self.tabs.indexOf(self.eeprom)
@@ -629,10 +630,10 @@ class MainWindow(QMainWindow):
             return
         address, value = self._push_remaining.pop(0)
         self._push_head = (address, value)
-        self._push_head_sig = (
-            bool(getattr(source, "last_write_ok", False)),
-            getattr(source, "last_write_error", None),
-        )
+        # Watch a monotonic count, not the sticky ok/error pair: two successful
+        # writes look identical there, which stalled the loop after one word and
+        # left the commit pair unsent.
+        self._push_head_count = int(getattr(source, "write_count", 0))
         source.enqueue_write(address, value)
         if address in (EEPROM_COMMIT_UNLOCK[0], EEPROM_COMMIT_COMMAND[0]):
             dialog.cancel_btn.setEnabled(False)
@@ -647,8 +648,10 @@ class MainWindow(QMainWindow):
         head_address, _value = self._push_head
         if address != head_address:
             return
-        if (bool(accepted), error) == self._push_head_sig:
-            return
+        if self._push_head_count is not None:
+            if int(getattr(source, "write_count", 0)) == self._push_head_count:
+                return
+            self._push_head_count = None
         ok = bool(accepted) and not error
         self._push_results[head_address] = ok
         if not ok:

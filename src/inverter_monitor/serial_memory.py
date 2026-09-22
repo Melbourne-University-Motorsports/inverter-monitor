@@ -53,6 +53,10 @@ class SerialMemoryViewSource:
         self.last_write_error: str | None = None
         self.last_write_ok = False
         self.last_write_address: int | None = None
+        # Bumped once per completed wm attempt, success or failure. The sticky
+        # last_write_ok/error pair cannot tell two successful writes apart, so
+        # a caller driving a write queue must watch this instead.
+        self.write_count = 0
 
     def enqueue_write(self, address: int, value: int) -> None:
         self._writes.put((int(address), int(value) & 0xFFFF))
@@ -103,6 +107,7 @@ class SerialMemoryViewSource:
         except Exception as exc:
             self.last_write_ok = False
             self.last_write_error = str(exc)
+            self.write_count += 1
             return
         deadline = time.monotonic() + 0.3
         while time.monotonic() < deadline:
@@ -112,10 +117,12 @@ class SerialMemoryViewSource:
             if self._consume_rae():
                 self.last_write_ok = True
                 self.last_write_error = None
+                self.write_count += 1
                 return
             time.sleep(0.005)
         self.last_write_ok = False
         self.last_write_error = f"No RAE from inverter after write to 0x{address:04X}."
+        self.write_count += 1
 
     def _consume_rae(self) -> bool:
         index = self._buf.find(b"RAE")

@@ -13,8 +13,11 @@ from inverter_monitor.memory_map import (
     CAN_STATUS_WATCH_ADDRESSES,
     DEFAULT_CAN_ID_OFFSET,
     DEFAULT_WATCH_ADDRESSES,
+    DIN_ADDRESSES,
+    RELOAD_WATCH_ADDRESSES,
     FEEDBACK_SPEED_ADDRESS,
     MEMORY_FRAME_ID,
+    OVERVIEW_WATCH_ADDRESSES,
     STATUS_WATCH_ADDRESSES,
     VSM_STATE_ADDRESS,
     pack_memory_frame,
@@ -76,8 +79,12 @@ def test_main_window_starts_and_paints():
     assert window.source.isHidden()
     assert window.offset.value() == DEFAULT_CAN_ID_OFFSET
     assert window.offset.text() == "0x0A0"
+    assert window.watch_list.addresses() == DEFAULT_WATCH_ADDRESSES
+    assert RELOAD_WATCH_ADDRESSES  # “reload default” has a real set to install
     assert CAN_ID_OFFSET_ADDRESS not in window.watch_list.addresses()
-    assert VSM_STATE_ADDRESS in window.watch_list.addresses()
+    assert VSM_STATE_ADDRESS not in window.watch_list.addresses()
+    assert VSM_STATE_ADDRESS in window.poller.poll_addresses()
+    assert FEEDBACK_SPEED_ADDRESS in window.poller.poll_addresses()
     watch_headers = [
         window.symbols.watch_table.horizontalHeaderItem(index).text()
         for index in range(window.symbols.watch_table.columnCount())
@@ -87,18 +94,10 @@ def test_main_window_starts_and_paints():
         window.symbols.watch_table.item(row, 1).text()
         for row in range(window.symbols.watch_table.rowCount())
     ]
-    assert "CAN_ID_Offset_EEPROM" not in watch_names
-    assert "VSM_State" in watch_names
-    assert "Inverter_Enable" in watch_names
-    assert "Inverter_Mode" in watch_names
-    assert "Feedback_Speed_(RPM)" in watch_names
-    assert "Mod_A_Temp_(C)_x_10" in watch_names
-    assert "DIN1_Forward_Switch" in watch_names
+    assert watch_names == []
     assert window.overview.flags["lockout"].isHidden()
     assert not window.overview.flags["discharge"].isHidden()
     assert "Accel analog 1" not in [card._title.text() for card in window.overview.cards]
-    assert "Post_Fault_Lo" in watch_names
-    assert "Run_Fault_Hi" in watch_names
     assert window.faults.auto_refresh.isChecked()
     assert window.faults.active.horizontalHeaderItem(0).text() != "Sev"
     headers = [
@@ -136,7 +135,7 @@ def test_main_window_starts_and_paints():
     window.symbols.add_btn.click()
     app.processEvents()
     assert 0x0093 in window.watch_list.addresses()
-    assert not window.symbols.reload_btn.isEnabled()
+    assert window.symbols.reload_btn.isEnabled()
     parser = build_parser()
     assert parser.parse_args([]).id_offset == DEFAULT_CAN_ID_OFFSET
     assert parser.parse_args(["--id-offset", "0"]).id_offset == 0
@@ -222,14 +221,18 @@ def test_tab_poll_set_preserves_symbols_watch_list():
 
     extra_name = "Commanded_Speed_(RPM)"
     extra_address = 0x0096
+    overview_poll = (*STATUS_WATCH_ADDRESSES, *OVERVIEW_WATCH_ADDRESSES)
     assert window.tabs.currentWidget() is window.overview
-    assert window.poller.poll_addresses() == DEFAULT_WATCH_ADDRESSES
+    assert window.poller.poll_addresses() == overview_poll
+    assert window.watch_list.addresses() == ()
     assert extra_address not in window.watch_list.addresses()
-    assert not window.symbols.reload_btn.isEnabled()
+    # List starts empty, so “reload default” is meaningful and enabled.
+    assert window.symbols.reload_btn.isEnabled()
 
     window.tabs.setCurrentWidget(window.symbols)
     app.processEvents()
-    assert window.poller.poll_addresses() == window.watch_list.addresses()
+    assert window.poller.poll_addresses() == STATUS_WATCH_ADDRESSES
+    assert VSM_STATE_ADDRESS in window.poller.poll_addresses()
     window.symbols.search.setText("commanded_speed")
     app.processEvents()
     _select_tree_name(window.symbols.catalog_tree, extra_name)
@@ -237,13 +240,15 @@ def test_tab_poll_set_preserves_symbols_watch_list():
     app.processEvents()
     assert extra_address in window.watch_list.addresses()
     assert extra_address in window.poller.poll_addresses()
+    assert VSM_STATE_ADDRESS in window.poller.poll_addresses()
     assert window.symbols.reload_btn.isEnabled()
 
     window.tabs.setCurrentWidget(window.overview)
     app.processEvents()
     assert extra_address in window.watch_list.addresses()
     assert extra_address not in window.poller.poll_addresses()
-    assert window.poller.poll_addresses() == DEFAULT_WATCH_ADDRESSES
+    assert window.poller.poll_addresses() == overview_poll
+    assert DIN_ADDRESSES[0] in window.poller.poll_addresses()
 
     window.tabs.setCurrentWidget(window.graphs)
     app.processEvents()
@@ -303,8 +308,9 @@ def test_tab_poll_set_preserves_symbols_watch_list():
         window.symbols.watch_table.item(row, 1).text()
         for row in range(window.symbols.watch_table.rowCount())
     ]
-    assert window.watch_list.addresses() == DEFAULT_WATCH_ADDRESSES
-    assert window.poller.poll_addresses() == DEFAULT_WATCH_ADDRESSES
+    # Reload installs the starter set the home screen reads; it does not clear.
+    assert window.watch_list.addresses() == RELOAD_WATCH_ADDRESSES
+    assert window.poller.poll_addresses() == RELOAD_WATCH_ADDRESSES
     assert not window.symbols.reload_btn.isEnabled()
     window.close()
     app.processEvents()
