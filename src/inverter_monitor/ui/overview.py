@@ -12,14 +12,15 @@ from PySide6.QtWidgets import (
 )
 
 from inverter_monitor.catalog import Catalog, graph_lookup_keys, mode_label
+from inverter_monitor.feed import FeedState, feed_state
 from inverter_monitor.store import (
     StoreSnapshot,
     command_mode,
-    first_signal,
+    fresh_signal,
     get_signal,
     mechanical_power_kw,
 )
-from inverter_monitor.ui.theme import CARD_MARGINS, PAGE_MARGINS
+from inverter_monitor.ui.theme import CARD_MARGINS, PAGE_MARGINS, set_tone
 from inverter_monitor.ui.widgets import Card, FlagChip, MetricCard
 
 # CAN M170 packed bits with no dedicated Memory View bool. Hide on RS232.
@@ -121,19 +122,40 @@ class OverviewPage(QWidget):
         root.setContentsMargins(*PAGE_MARGINS)
         root.addWidget(splitter)
 
-    def update_from(self, snapshot: StoreSnapshot, source: str = "RS232") -> None:
+    def update_from(
+        self,
+        snapshot: StoreSnapshot,
+        source: str = "RS232",
+        feed: FeedState | None = None,
+    ) -> None:
+        feed = feed if feed is not None else feed_state(snapshot, True)
         rs232 = source == "RS232"
         for name, chip in self.flags.items():
             chip.setVisible(not rs232 or name not in _CAN_ONLY_FLAGS)
 
+        if not feed.live:
+            # Nothing is being read: show unknown, not the last motor speed.
+            for card in (*self.cards, self.power):
+                card.set_no_data()
+            for chip in self.flags.values():
+                chip.set_state(None)
+            self.relays.setText("Relays —")
+            self.dins.setText("DINs —")
+            self.detail.setPlainText(feed.reason)
+            return
+
         for card in self.cards:
             card.update_from(snapshot)
         power = mechanical_power_kw(snapshot)
-        self.power._value.setText("—" if power is None else f"{power:.1f}")
-        self.power._unit.setText("kW")
+        if power is None:
+            self.power.set_no_data()
+        else:
+            self.power._value.setText(f"{power:.1f}")
+            self.power._unit.setText("kW")
+            set_tone(self.power._value, None)
 
         def flag(key: str) -> bool | None:
-            signal = get_signal(snapshot, key)
+            signal = fresh_signal(snapshot, key)
             if signal is None:
                 return None
             return bool(signal.value)
@@ -143,7 +165,7 @@ class OverviewPage(QWidget):
             self.flags["bms"].set_state(flag("M170_Internal_States.D7_BMS_Torque_Limiting"))
             self.flags["max_spd"].set_state(flag("M170_Internal_States.D7_Max_Speed_Limiting"))
             self.flags["low_spd"].set_state(flag("M170_Internal_States.D7_Low_Speed_Limiting"))
-        discharge = first_signal(
+        discharge = fresh_signal(
             snapshot,
             "M170_Internal_States.D4_Inverter_Discharge_State",
             "MemoryView.Inverter_Discharge_State",
@@ -161,7 +183,7 @@ class OverviewPage(QWidget):
             self._set_bits(self.relays, "Relays", relay_keys, snapshot)
             self._set_bits(self.dins, "DINs", din_keys, snapshot)
 
-        vsm = first_signal(
+        vsm = fresh_signal(
             snapshot,
             "M170_Internal_States.D1_VSM_State",
             "MemoryView.VSM_State",

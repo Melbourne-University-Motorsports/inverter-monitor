@@ -1,77 +1,57 @@
 ---
 type: Monitor Mapping
 title: inverter-monitor readout mapping and write contract
-description: How the repo maps OKF concepts to decode tables and UI, and which writes are allowed.
-tags: [monitor, mapping, safety, pm100dx]
+description: How the repo maps OKF concepts to symbol tables and UI, and which writes are allowed.
+tags: [monitor, mapping, safety, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:
-  - id: can-protocol
-    resource: ../../Source Documentation/CAN Protocol (V6_3).pdf
-    title: Cascadia Motion CAN Protocol Rev 6.3 (2023-11-17)
   - id: sw-manual
     resource: ../../Source Documentation/Software User Manual (V3_6) For Inverter.pdf
     title: Cascadia Motion Software User Manual Rev 3.6 (2021-01-14)
 ---
 
-# Readout mapping
+# Readout mapping and write contract
 
-`inverter-monitor` is a live monitor: pick one source (RS232 or
-CAN), no auto-connect, close RMS GUI first (COM port is exclusive).
+`inverter-monitor` is a live monitor and configuration tool over **RS232**
+Memory View (`--serial`). Close RMS GUI first (COM port is exclusive).
 
-## Sources
+## Transport
 
 * **RS232** (`--serial`): polls the active tab’s address set with `rm` at
-  57600 8N1. `wm` is Clear Faults (`wm0002=0000`, Faults tab, confirmed),
+  57600 8N1. `wm` writes are supported for Clear Faults (`wm0002=0000`, Faults tab),
   Calibration RAM writes of Delay Command `0x0005` / Gamma Adjust `0x0010`,
-  and Calibration Program EEPROM (`0x0118`/`0x011A` then `wm0000=5a0f` /
-  `wm0001=0059`). See [Memory View](/inverter/memory-view.md).
-* **CAN** (`--can`, subscribe-only `bus.recv()`): default offset **0x0A0**
-  (this car's EEPROM value), overridable via `--id-offset`. 500 kbit/s
-  default. M170/M171 give relays, limit flags, POST+RUN faults with no
-  extra symbol picks; see [transport](/can/transport.md) and
-  [broadcast catalog](/can/broadcast-catalog.md).
+  Calibration Program EEPROM (`0x0118`/`0x011A` then `wm0000=5a0f` / `wm0001=0059`),
+  and EEPROM-tab **Push to inverter** (per-word parameter write then commit).
+  See [Memory View](/inverter/memory-view.md).
 
-## Decode tables
+## Definition tables
 
 | File | OKF concept | Role |
 |------|-------------|------|
-| `data/reference_decode.yaml` | [broadcast](/can/broadcast-catalog.md), [M170](/can/internal-states.md), [M171](/can/fault-codes.md) | CAN layout, enums, 64 fault bits, SCI column map |
-| `data/defsyms.yaml` | [EEPROM](/inverter/eeprom.md) | G3 Memory-View addresses |
+| `data/defsyms.yaml` | [EEPROM](/inverter/eeprom.md) | G3 Memory-View addresses and metadata |
 | `data/vsm_states.yaml` | [VSM](/inverter/vsm.md), [inverter mode](/inverter/inverter-mode.md) | State descriptions |
-| `data/faults.yaml` | [diagnostics](/inverter/faults-diagnostics.md) | Fault text |
-| `data/can_status.yaml` | [CAN status](/can/can-status.md) | Gen 3 CAN_Status/CAN_Faults bit maps + error counters |
-| `profiles/default.yaml` | [transport](/can/transport.md) | Bus, channel, offset |
+| `data/faults.yaml` | [diagnostics](/inverter/faults-diagnostics.md) | Diagnostic text for faults |
+| `data/reference_decode.yaml` | [M171](/inverter/faults-diagnostics.md) | 64-bit fault bitfield definitions, SCI column map |
 
 ## UI mapping
 
-Status strip (VSM/enable/command-mode/inverter-mode/fault count) ←
-[internal states](/can/internal-states.md), with the VSM one-liner following
-live command mode (CAN wording unless mode = 1); Overview (speed/torque/DC/temps/flags)
-← [broadcast](/can/broadcast-catalog.md); Faults (raw + decoded, POST needs
-CAN) ← [fault codes](/can/fault-codes.md); the Faults tab also polls the CAN
-module's own words (`0x00C8`/`0x00C9`/`0x00CC`/`0x00CD`) and shows a
-[CAN health](/can/can-status.md) chip, which the strip's `FAULTS` element
-picks up as `· CAN DEGRADED` / `· CAN BUS OFF`; Graphs ← M165–M168/M172/M176;
-Symbols ← [Memory View](/inverter/memory-view.md) watch list; Calibration ←
-resolver delay / gamma RAM iteration, optional EEPROM persist; Raw ← last
-frame per ID; States ← [VSM](/inverter/vsm.md) with per-mode descriptions
-(`VsmState.text()`: M170 command-mode bit, else `0x011B` EEPROM word, else CAN).
-
-Operator rule of thumb (CAN mode): **VSM 4 on the status strip means the
-inverter is waiting for the VCU's command sequence** (Disable to clear
-lockout, then Enable + direction + torque inside the timeout window) — not
-for pedals or key. If it sits at 4, check command TX, lockout (M170 byte 6
-bit 7), and faults before touching anything else.
+- **Status strip** (VSM/enable/command-mode/inverter-mode/fault count) ← VSM 0x0093, enable 0x0094, mode 0x0092, fault words 0x0057–0x005A.
+- **Overview** (speed/torque/DC/temps/flags) ← Memory View live telemetry.
+- **Faults** (raw + decoded fault bits) ← 64-bit fault registers with Clear Faults button.
+- **Graphs** ← time-series plotting of watched variables.
+- **Symbols** ← [Memory View](/inverter/memory-view.md) custom watch list.
+- **EEPROM** ← grouped parameter tree from `data/defsyms.yaml`, with in-place cell editing, engineering unit conversions, diff staging, and guarded push-to-inverter dialog.
+- **Calibration** ← resolver delay / gamma RAM iteration, optional EEPROM persist.
+- **Raw** ← last frame per address.
+- **States** ← [VSM](/inverter/vsm.md) and Inverter Mode descriptions.
 
 ## Write contract
 
-Never transmitted: other EEPROM parameter writes, M192 command frames, or CAN
-parameter writes except Clear Faults
-([command](/can/command-message.md), [parameters](/can/parameter-messages.md)).
-RS232 may `wm` Clear Faults (`0x0002`), Calibration RAM Delay/Gamma
-(`0x0005` / `0x0010`), and Calibration Program EEPROM (`0x0118` / `0x011A`
-then `0x0000`/`0x0001`).
-Staleness rule: flag fast frames missing past 3× cycle time. Open question:
-confirm RealTerm brake column vs shudder (see [SCI](/inverter/sci-serial.md))
-before trusting brake readings.
+* **RS232 Memory View**:
+  - Continuous reading via `rm`.
+  - Allowed write commands (`wm`):
+    - **Clear Faults**: `wm0002=0000` from the Faults tab with operator confirmation.
+    - **Calibration RAM Tuning**: `wm0005=VVVV` (Delay Command) and `wm0010=VVVV` (Gamma Adjust) for live tuning.
+    - **Calibration EEPROM Commit**: Copies Delay/Gamma into `0x0118`/`0x011A` and commits via `wm0000=5a0f` / `wm0001=0059`.
+    - **EEPROM Push to Inverter**: Flashes modified EEPROM parameters in the EEPROM tab. Requires safety interlocks (**VSM Wait 4** and **Inverter Disabled 0**) and explicit confirmation of staged changes in a modal diff dialog before programming non-volatile memory.

@@ -2,7 +2,7 @@
 type: CAN Diagnostics
 title: CAN module status and fault registers (Gen 3)
 description: Bit maps for CAN_Status 0x00C8 and CAN_Faults 0x00C9, the Tx/Rx error counters, the Gen 5/CM-only watch items, and the monitor's "CAN degraded" flag.
-tags: [can, diagnostics, memory-view, gen3, pm100dx]
+tags: [can, diagnostics, memory-view, gen3, pm100]
 status: stable
 generated: { by: hermes-agent, at: 2026-09-19T00:00:00Z }
 sources:

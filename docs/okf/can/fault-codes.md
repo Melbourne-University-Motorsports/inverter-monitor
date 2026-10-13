@@ -2,7 +2,7 @@
 type: Fault Reference
 title: Fault codes message 0x0AB (M171), 64 bits
 description: Complete POST (bytes 0-3) and RUN (bytes 4-7) fault bit map with blink, latch, and clear behavior.
-tags: [can, m171, faults, post, run, pm100dx]
+tags: [can, m171, faults, post, run, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

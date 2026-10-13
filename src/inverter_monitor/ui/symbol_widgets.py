@@ -147,11 +147,19 @@ class GroupedSymbolTree(QTreeWidget):
                 addresses.append(int(address))
         return addresses
 
-    def update_from(self, snapshot: StoreSnapshot, catalog_by_address: dict[int, MemorySymbol]) -> None:
+    def update_from(
+        self,
+        snapshot: StoreSnapshot,
+        catalog_by_address: dict[int, MemorySymbol],
+        live: bool = True,
+    ) -> None:
         for address, item in self._items.items():
             symbol = catalog_by_address.get(address)
             if symbol is None:
                 continue
-            value, raw = symbol_value_texts(symbol, snapshot)
+            if live:
+                value, raw = symbol_value_texts(symbol, snapshot)
+            else:
+                value, raw = "—", "—"
             item.setText(self.value_column, value)
             item.setText(self.raw_column, raw)

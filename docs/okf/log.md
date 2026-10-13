@@ -1,4 +1,17 @@
-# PM100DX Bundle Update Log
+# PM100 Bundle Update Log
+
+## 2026-10-13
+* **Update**: Broadened scope from PM100DX/PM100DZ-specific to general Cascadia Motion /
+  Rinehart PM100 series inverters (PM100, PM100DX, PM100DZ, etc.).
+* **Update**: Reflected transition from a read-only monitor to a full live monitor
+  and parameter configuration tool.
+* **Update**: Documented EEPROM parameter editing and safe Push to Inverter workflow:
+  in-place parameter editing with engineering unit and range checks, dirty change tracking,
+  and guarded push-to-inverter execution with VSM Wait (4) and Inverter Disabled (0)
+* **Update**: Dropped mentions of CAN for now, focusing documentation and guides
+  on RS232 Memory View live monitoring, diagnostics, and guarded parameter configuration.
+* **Update**: Maintained strict write boundary: guarded writes over RS232 Memory View
+  cover Clear Faults, resolver calibration tuning/commit, and EEPROM programming.
 
 ## 2026-09-19
 * **New**: `can/can-status.md` — Gen 3 CAN module diagnostics from CAN Protocol

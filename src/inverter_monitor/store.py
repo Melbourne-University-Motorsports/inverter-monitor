@@ -168,6 +168,11 @@ class InverterStore:
                 for bit in sorted(self._active_bits)
                 if bit in self.catalog.fault_bits
             )
+            # Prune against `now` here, not only when a frame arrives: otherwise
+            # the rate freezes at its last value the moment the source goes
+            # quiet, and "the inverter stopped talking" never becomes visible.
+            recent = [stamp for stamp in self._recent_frames if stamp >= now - 1.0]
+            self._recent_frames = recent
             return StoreSnapshot(
                 now=now,
                 signals=dict(self._signals),
@@ -177,7 +182,7 @@ class InverterStore:
                 post_word=self._post_word,
                 run_word=self._run_word,
                 frame_count=self._frame_count,
-                frames_per_sec=float(len(self._recent_frames)),
+                frames_per_sec=float(len(recent)),
             )
 
 
@@ -197,6 +202,18 @@ def first_signal(snapshot: StoreSnapshot, *keys: str) -> SignalSnapshot | None:
         if stale_hit is None:
             stale_hit = signal
     return stale_hit
+
+
+def fresh_signal(snapshot: StoreSnapshot, *keys: str) -> SignalSnapshot | None:
+    """Like first_signal, but None when every candidate is stale.
+
+    Live status widgets use this so a value that stopped arriving is shown as
+    unknown rather than as the last number the inverter happened to send.
+    """
+    signal = first_signal(snapshot, *keys)
+    if signal is None or signal.stale(snapshot.now):
+        return None
+    return signal
 
 
 #: Store keys reporting the inverter command mode (0 = CAN, 1 = VSM): live
@@ -240,8 +257,8 @@ def format_value(signal: SignalSnapshot | None, now: float) -> str:
 
 
 def mechanical_power_kw(snapshot: StoreSnapshot) -> float | None:
-    speed = first_signal(snapshot, *graph_lookup_keys("M165_Motor_Position_Info.D2_Motor_Speed"))
-    torque = first_signal(
+    speed = fresh_signal(snapshot, *graph_lookup_keys("M165_Motor_Position_Info.D2_Motor_Speed"))
+    torque = fresh_signal(
         snapshot,
         *graph_lookup_keys("M172_Torque_And_Timer_Info.D2_Torque_Feedback"),
     )

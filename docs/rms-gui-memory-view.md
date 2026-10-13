@@ -107,4 +107,4 @@ The monitor Calibration tab iterates Memory Values, then optionally copies Delay
 | EEPROM map | No | `defsyms.yaml` addresses |
 | Port | Same ADAM COM, 57600 8N1 in practice | Exclusive with RMS GUI |
 
-The read-only SCI/CAN paths still never send `wm`. Memory View RS232 may `wm` Clear Faults, Calibration RAM, and Calibration Program EEPROM.
+The passive SCI serial stream never sends `wm`. Memory View RS232 may `wm` Clear Faults, Calibration RAM tuning, Calibration Program EEPROM, and EEPROM Push (with safety interlocks and confirmation).

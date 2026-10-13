@@ -2,7 +2,7 @@
 type: CAN Transport
 title: PM CAN transport, addressing, and rates
 description: Framing, baud, ID-offset/J1939 addressing, and broadcast rates for PM/RM/Gen5/CM controllers.
-tags: [can, transport, addressing, pm100dx]
+tags: [can, transport, addressing, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

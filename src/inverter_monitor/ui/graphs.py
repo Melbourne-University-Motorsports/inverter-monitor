@@ -28,7 +28,7 @@ from inverter_monitor.catalog import (
     graph_poll_addresses,
     graphable_keys,
 )
-from inverter_monitor.store import StoreSnapshot, first_signal
+from inverter_monitor.store import StoreSnapshot, fresh_signal
 from inverter_monitor.ui.theme import BG, DIM, PAGE_MARGINS, TEXT
 
 
@@ -495,7 +495,9 @@ class GraphsPage(QWidget):
         window = self._window_s()
         selected = self.selected_keys()
         for key in selected:
-            signal = first_signal(snapshot, *graph_lookup_keys(key))
+            # Only fresh samples extend a trace: a stale signal must not draw a
+            # flat line at its last value while the inverter is quiet.
+            signal = fresh_signal(snapshot, *graph_lookup_keys(key))
             if signal is None or not isinstance(signal.value, (int, float)) or isinstance(signal.value, bool):
                 continue
             buf = self._buffers.setdefault(key, deque())

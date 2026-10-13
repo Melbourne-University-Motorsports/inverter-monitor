@@ -2,7 +2,7 @@
 type: Serial Protocol Reference
 title: Memory View RS232 protocol, reverse-engineered (rm/wm)
 description: USBPcap-derived request/response grammar, checksum, session flow, watch-list and write findings, and how the monitor implements it.
-tags: [serial, memory-view, rms-gui, rs232, reverse-engineering, pm100dx]
+tags: [serial, memory-view, rms-gui, rs232, reverse-engineering, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

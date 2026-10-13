@@ -2,7 +2,7 @@
 type: CAN Command Reference
 title: Command message 0x0C0 (VCU to inverter)
 description: Heartbeat torque/speed control word, safety interlocks, and sign convention. Transmit-only; the monitor never sends it.
-tags: [can, command, safety, torque, pm100dx]
+tags: [can, command, safety, torque, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

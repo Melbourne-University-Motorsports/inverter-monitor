@@ -16,7 +16,7 @@ from inverter_monitor.transport import CanFrame
 
 
 class DemoSource:
-    """Synthetic PM100DX traffic so the UI can run without hardware."""
+    """Synthetic PM100 traffic so the UI can run without hardware."""
 
     label = "demo"
 

@@ -2,7 +2,7 @@
 type: CAN Catalog
 title: Broadcast message catalog (0x0A0–0x0B1)
 description: Address, rate, enable bit, and byte layout of every inverter broadcast message at default offset 0x0A0.
-tags: [can, broadcast, catalog, pm100dx]
+tags: [can, broadcast, catalog, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

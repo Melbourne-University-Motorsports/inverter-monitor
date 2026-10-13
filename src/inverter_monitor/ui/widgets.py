@@ -5,13 +5,14 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSpinBox, QVBoxLayout
 
 from inverter_monitor.catalog import Catalog
 from inverter_monitor.can_health import FAULT, evaluate_can_health
+from inverter_monitor.feed import FeedState, feed_state
 from inverter_monitor.store import (
     COMMAND_MODE_KEYS,
     StoreSnapshot,
     command_mode,
     first_signal,
     format_value,
-    get_signal,
+    fresh_signal,
 )
 from inverter_monitor.ui.theme import CARD_MARGINS, set_tone, vsm_tone
 
@@ -61,13 +62,24 @@ class MetricCard(Card):
         layout.addWidget(self._unit)
         layout.addStretch()
 
+    def set_no_data(self, note: str = "") -> None:
+        """Present the card as unknown without pretending 0 is a reading."""
+        self._value.setText("—")
+        self._unit.setText(note)
+        set_tone(self._value, "dim")
+
     def update_from(self, snapshot: StoreSnapshot) -> None:
         signal = first_signal(snapshot, *self.keys) if self.keys else None
+        if signal is None or signal.value is None:
+            self.set_no_data()
+            return
+        if signal.stale(snapshot.now):
+            # The last number is history; keep the card honest about it.
+            self.set_no_data("no live data")
+            return
         self._value.setText(format_value(signal, snapshot.now))
-        unit = signal.unit if signal else ""
-        stale = signal.stale(snapshot.now) if signal else True
-        self._unit.setText("stale" if stale and signal else unit)
-        set_tone(self._value, "dim" if stale else None)
+        self._unit.setText(signal.unit)
+        set_tone(self._value, None)
 
 
 class FlagChip(QLabel):
@@ -144,8 +156,13 @@ class StatusStrip(Card):
         source_label: str,
         running: bool,
         lost_reason: str | None = None,
+        feed: FeedState | None = None,
     ) -> None:
-        vsm = first_signal(
+        feed = feed if feed is not None else feed_state(snapshot, running, lost_reason)
+        if not feed.live:
+            self._render_no_data(feed)
+            return
+        vsm = fresh_signal(
             snapshot,
             "M170_Internal_States.D1_VSM_State",
             "MemoryView.VSM_State",
@@ -168,15 +185,15 @@ class StatusStrip(Card):
                 vsm.enum_description or vsm.enum_name or "VSM_State"
             )
         else:
-            self.vsm_desc.setText("Waiting for VSM" if running else "")
-        enable = first_signal(
+            self.vsm_desc.setText("Waiting for VSM")
+        enable = fresh_signal(
             snapshot,
             "M170_Internal_States.D6_Inverter_Enable_State",
             "MemoryView.Inverter_Enable",
         )
-        lockout = get_signal(snapshot, "M170_Internal_States.D6_Inverter_Enable_Lockout")
-        mode = first_signal(snapshot, *COMMAND_MODE_KEYS)
-        inv = first_signal(
+        lockout = fresh_signal(snapshot, "M170_Internal_States.D6_Inverter_Enable_Lockout")
+        mode = fresh_signal(snapshot, *COMMAND_MODE_KEYS)
+        inv = fresh_signal(
             snapshot,
             "M170_Internal_States.D2_Inverter_State",
             "MemoryView.Inverter_Mode",
@@ -207,12 +224,16 @@ class StatusStrip(Card):
         self.faults.setText(text)
         set_tone(self.faults, tone)
         self.faults.setToolTip(tooltip)
-        self.source.setText(source_label.upper() if running else "DISCONNECTED")
+        self.source.setText(source_label.upper())
         set_tone(self.source, None)
         self.rate.setText(f"{snapshot.frames_per_sec:.0f} fps")
-        if running:
-            return
+
+    def _render_no_data(self, feed: FeedState) -> None:
+        """No live feed: every status field reads as unknown, never as its last value."""
+        self.vsm_id.setText("—")
         set_tone(self.vsm_id, "dim")
+        self.vsm_name.setText("No data" if feed.connected else "Not connected")
+        self.vsm_desc.setText(feed.reason)
         self.enable.setText("ENABLE —")
         set_tone(self.enable, "dim")
         self.mode.setText("MODE —")
@@ -220,8 +241,6 @@ class StatusStrip(Card):
         self.faults.setText("FAULTS —")
         set_tone(self.faults, "dim")
         self.faults.setToolTip("")
-        self.source.setText("DISCONNECTED")
-        set_tone(self.source, "warn" if lost_reason else "dim")
+        self.source.setText(feed.strip_text)
+        set_tone(self.source, feed.tone)
         self.rate.setText("0 fps")
-        if lost_reason:
-            self.vsm_desc.setText(lost_reason)

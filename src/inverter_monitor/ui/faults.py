@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from inverter_monitor.catalog import Catalog, FaultBit
 from inverter_monitor.can_health import evaluate_can_health
+from inverter_monitor.feed import FeedState
 from inverter_monitor.store import StoreSnapshot, get_signal
 from inverter_monitor.ui.theme import (
     ACCENT,
@@ -264,7 +265,7 @@ class FaultsPage(QWidget):
         super().__init__(parent)
         self._catalog = catalog
         self._snapshot: StoreSnapshot | None = None
-        self._connected = False
+        self._feed: FeedState | None = None
         self._selected_bit: int | None = None
         self._active_ids: tuple[int, ...] = ()
         self._history_key: tuple[tuple[float, int, bool], ...] = ()
@@ -404,16 +405,15 @@ class FaultsPage(QWidget):
         self.active.itemSelectionChanged.connect(self._active_selection_changed)
         self.can_section.chip.clicked.connect(self._show_can_detail)
 
-    def set_connected(self, connected: bool) -> None:
-        self._connected = connected
-        self.clear_btn.setEnabled(connected)
-
     def set_command_status(self, text: str, ok: bool = True) -> None:
         self.command_status.setText(text)
         set_tone(self.command_status, "ok" if ok else "fault")
 
-    def update_from(self, snapshot: StoreSnapshot) -> None:
+    def update_from(self, snapshot: StoreSnapshot, feed: FeedState | None = None) -> None:
         self._snapshot = snapshot
+        if feed is not None:
+            self._feed = feed
+            self.clear_btn.setEnabled(feed.connected)
         if self.auto_refresh.isChecked():
             self._render(snapshot)
 
@@ -429,12 +429,21 @@ class FaultsPage(QWidget):
             self._render(self._snapshot)
 
     def _render(self, snapshot: StoreSnapshot) -> None:
+        if self._feed is not None and not self._feed.live:
+            self._render_no_data(self._feed)
+            return
         faults = snapshot.active_faults
         post_n = sum(1 for bit in faults if bit.bit < 32)
         run_n = len(faults) - post_n
-        has_feed = any(get_signal(snapshot, key) for key in _FAULT_FEED_KEYS)
+        # Only a fresh fault word counts as feed: stale words are history.
+        has_feed = any(
+            signal is not None and signal.raw is not None and not signal.stale(snapshot.now)
+            for signal in (get_signal(snapshot, key) for key in _FAULT_FEED_KEYS)
+        )
         can = evaluate_can_health(snapshot, self._catalog)
         self._can_health = can
+        self.live_label.setText("Live" if self.auto_refresh.isChecked() else "Paused")
+        set_tone(self.live_label, "ok" if self.auto_refresh.isChecked() else "warn")
 
         fault_text: str
         fault_tone: str
@@ -494,6 +503,24 @@ class FaultsPage(QWidget):
         # clicked a bit and we must not blank it on every refresh.
 
         self._render_can_section(can)
+
+    def _render_no_data(self, feed: FeedState) -> None:
+        """The feed is dead: do not keep showing the last fault words as current."""
+        self.headline.setText("NO DATA")
+        set_tone(self.headline, "dim")
+        self.counts.setText(feed.reason)
+        self.live_label.setText("No data")
+        set_tone(self.live_label, "warn")
+        self._active_ids = ()
+        self.bitmap.set_state(set(), None)
+        self.empty.setVisible(False)
+        self.active.setVisible(False)
+        self.can_section.chip.setText("CAN —")
+        set_tone(self.can_section.chip, "dim")
+        set_tone(self.can_section, None)
+        self.can_section.note.setText(feed.reason)
+        self.can_section.values.setText("")
+        self.can_section.values.setVisible(False)
 
     def _render_can_section(self, can) -> None:
         """Fill the labeled CAN module block: chip, short summary, raw words.

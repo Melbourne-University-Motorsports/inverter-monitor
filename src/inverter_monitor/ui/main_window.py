@@ -29,6 +29,7 @@ from inverter_monitor.calibration import (
 )
 from inverter_monitor.catalog import Catalog
 from inverter_monitor.decode import M193_PARAM_COMMAND_ID, PARAM_CLEAR_FAULTS, Decoder, pack_param_write
+from inverter_monitor.feed import feed_state
 from inverter_monitor.memory_map import (
     CAN_STATUS_WATCH_ADDRESSES,
     CLEAR_FAULTS_ADDRESS,
@@ -67,7 +68,7 @@ def _looks_like_serial(text: str) -> bool:
 class MainWindow(QMainWindow):
     def __init__(self, catalog: Catalog, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("PM100DX Inverter Monitor")
+        self.setWindowTitle("PM100 Inverter Monitor")
         self.resize(1280, 800)
         self.catalog = catalog
         self.store = InverterStore(catalog)
@@ -244,17 +245,19 @@ class MainWindow(QMainWindow):
             widget.setVisible(rs232)
         for widget in (self.can_bitrate, self.bitrate_label):
             widget.setVisible(not rs232)
+        snapshot = self.store.snapshot()
+        feed = feed_state(snapshot, self._pump is not None, self._lost_reason)
         if rs232:
             self.port_label.setText("Port")
             self._refresh_ports()
             self._sync_eeprom_tab()
-            self.overview.update_from(self.store.snapshot(), "RS232")
+            self.overview.update_from(snapshot, "RS232", feed=feed)
             return
         self.port_label.setText("Channel")
         if not self._channel_text() or _looks_like_serial(self._channel_text()):
             self._set_channel("can0")
         self._sync_eeprom_tab()
-        self.overview.update_from(self.store.snapshot(), "CAN")
+        self.overview.update_from(snapshot, "CAN", feed=feed)
 
     def _sync_poll_set(self, _index: int = 0) -> None:
         current = self.tabs.currentWidget()
@@ -363,19 +366,19 @@ class MainWindow(QMainWindow):
                 self._setting_offset = False
         running = self._pump is not None
         rs232 = running and self.source.currentText() == "RS232"
-        self.strip.update_from(snapshot, self._source_label, running, self._lost_reason)
-        self.overview.update_from(snapshot, self.source.currentText())
-        self.faults.set_connected(running)
-        self.faults.update_from(snapshot)
+        feed = feed_state(snapshot, running, self._lost_reason)
+        self.strip.update_from(snapshot, self._source_label, running, self._lost_reason, feed=feed)
+        self.overview.update_from(snapshot, self.source.currentText(), feed=feed)
+        self.faults.update_from(snapshot, feed)
         self._update_clear_status()
         self.graphs.update_from(snapshot)
-        self.symbols.update_from(snapshot)
+        self.symbols.update_from(snapshot, feed)
         self.eeprom.set_rs232_active(rs232)
         self.eeprom.update_from(snapshot, self.poller.dump_progress())
         self._sync_eeprom_tab()
         self.calibration.update_from(snapshot, self.source.currentText(), rs232)
         self.raw.update_from(snapshot)
-        self.states.update_from(snapshot)
+        self.states.update_from(snapshot, feed)
 
     def _offset_edited(self, _value: int) -> None:
         if not self._setting_offset:
@@ -773,15 +776,13 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "About",
-            "Live monitor for Cascadia / Rinehart PM100DX inverters.\n\n"
-            "Pick one live source:\n"
-            "• RS232 — poll watched symbols with rm; EEPROM dumps once on connect\n"
-            "• CAN — subscribe-only\n\n"
+            "Live monitor and configuration tool for Cascadia / Rinehart PM100 inverters over RS232.\n\n"
+            "RS232 polls watched symbols with rm; EEPROM dumps once on connect.\n\n"
             "Symbols is a personal Memory View watch list; other tabs poll on their own.\n"
             "EEPROM loads once on RS232 connect (Pull from inverter to reload).\n"
             "Calibration iterates Delay Command and Gamma Adjust in RAM. "
             "Program EEPROM is optional, last, and only from that tab.\n"
-            "VSM state is on CAN M170 or RS232 address 0x0093.",
+            "VSM state is on RS232 address 0x0093.",
         )
 
     def closeEvent(self, event: QCloseEvent) -> None:

@@ -107,7 +107,7 @@ Official **Cascadia Motion / Rensselaer Motorsport** software distribution. The 
 | Waveform logs | `PM100/GUI/WLD_*.csv`, `4-26-24_HV_Test_Bench.txt` | Exported snapshots / time series |
 | CAN DBC (PM100DX) | [`Tools/CAN Tools/PM and RM series DBC files/20210505 RMS PM and RM CAN DB.dbc`](https://github.com/RensselaerMotorsport/RMS-Software/blob/main/Tools/CAN%20Tools/PM%20and%20RM%20series%20DBC%20files/20210505%20RMS%20PM%20and%20RM%20CAN%20DB.dbc) | **Authoritative 11-bit PM100 CAN decode** |
 | CAN DBC (Gen5 / iM) | `Tools/CAN Tools/CM and Gen5 control card DBC files/`, `iM225.../` | Newer hardware variants, J1939 offset variants |
-| Flash / EEPROM | `Tools/C2000Prog/`, GUI + param messages M193/M194 | **Note for later — do not implement in read-only monitor** |
+| Flash / EEPROM | `Tools/C2000Prog/`, GUI + param messages M193/M194 | Memory View `wm` implemented for guarded EEPROM editing/push and calibration; CAN parameter writes stay unneeded |
 | RealTerm | `Tools/RealTerm/` | Serial capture helper used with GUI |
 | Documentation | `PM100/Documentation/*.pdf` | CAN protocol, user manual, diag data, calibration |
 
@@ -210,7 +210,7 @@ Comments: power-on timer in M172 updates every **3 ms**; default fast message pe
 3. **Scaling/sign:** PM100DX `norm()` rules for signed 16-bit fields.
 4. **Transport options:** python-can SocketCAN + optional [`candaptor`](../../candaptor) USB bridge (already PySide6).
 5. **Log replay:** ASC/BLF/CSV CAN logs **and** RealTerm serial format for regression against `capture.txt`.
-6. **Parameter tooling boundary:** keep M193/M194 / defsyms behind a separate write-capable module; default read-only CAN subscribe only.
+6. **Parameter tooling and write safety:** implement guarded Memory View RS232 writes (`wm`) for Clear Faults, resolver calibration, and EEPROM editing/pushing with safety interlocks; keep CAN transport strictly subscribe-only.
 
 ---
 

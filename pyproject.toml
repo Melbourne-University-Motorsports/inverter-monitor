@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "inverter-monitor"
 version = "0.1.0"
-description = "Read-only live monitor for Cascadia/Rinehart PM100DX inverters"
+description = "Live monitor and configuration tool for Cascadia/Rinehart PM100 inverters"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

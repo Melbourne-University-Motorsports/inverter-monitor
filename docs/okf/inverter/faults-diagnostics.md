@@ -2,7 +2,7 @@
 type: Fault Reference
 title: Fault diagnostics (blink codes, latch, clear)
 description: How faults present, blink priority, latching faults, and the clear procedure.
-tags: [faults, diagnostics, blink-codes, pm100dx]
+tags: [faults, diagnostics, blink-codes, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

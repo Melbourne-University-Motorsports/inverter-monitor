@@ -15,7 +15,8 @@ from PySide6.QtWidgets import (
 )
 
 from inverter_monitor.catalog import CAN_COMMAND_MODE, Catalog, mode_label
-from inverter_monitor.store import StoreSnapshot, command_mode, first_signal
+from inverter_monitor.feed import FeedState, feed_state
+from inverter_monitor.store import StoreSnapshot, command_mode, fresh_signal
 from inverter_monitor.ui.theme import PAGE_MARGINS, vsm_color
 
 
@@ -114,7 +115,8 @@ class StatesPage(QWidget):
             lines.extend(f"  • {item}" for item in state.lockouts)
         self.detail.setPlainText("\n".join(lines))
 
-    def update_from(self, snapshot: StoreSnapshot) -> None:
+    def update_from(self, snapshot: StoreSnapshot, feed: FeedState | None = None) -> None:
+        feed = feed if feed is not None else feed_state(snapshot, True)
         mode = command_mode(snapshot)
         effective = CAN_COMMAND_MODE if mode is None else mode
         if effective != self._mode:
@@ -122,12 +124,18 @@ class StatesPage(QWidget):
             self._refill_descriptions(self.vsm_table, self._catalog.vsm_states)
             self._refill_descriptions(self.inv_table, self._catalog.inverter_states)
             self._show_selected()
-        vsm = first_signal(
+        if not feed.live:
+            # The definitions stay, but nothing is lit: the last VSM row is not
+            # the current state once the feed has stopped.
+            self._highlight(self.vsm_table, None)
+            self._highlight(self.inv_table, None)
+            return
+        vsm = fresh_signal(
             snapshot,
             "M170_Internal_States.D1_VSM_State",
             "MemoryView.VSM_State",
         )
-        inv = first_signal(
+        inv = fresh_signal(
             snapshot,
             "M170_Internal_States.D2_Inverter_State",
             "MemoryView.Inverter_Mode",

@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from inverter_monitor.catalog import Catalog
+from inverter_monitor.feed import FeedState
 from inverter_monitor.memory_map import (
     LIVE_GROUP_ORDER,
     RELOAD_WATCH_ADDRESSES,
@@ -173,8 +174,9 @@ class SymbolsPage(QWidget):
                 item.setData(_ADDR_ROLE, symbol.address)
                 self.watch_table.setItem(row, column, item)
 
-    def update_from(self, snapshot: StoreSnapshot) -> None:
-        self.catalog_tree.update_from(snapshot, self._catalog.memory_by_address)
+    def update_from(self, snapshot: StoreSnapshot, feed: FeedState | None = None) -> None:
+        live = feed.live if feed is not None else True
+        self.catalog_tree.update_from(snapshot, self._catalog.memory_by_address, live=live)
         for row in range(self.watch_table.rowCount()):
             addr_item = self.watch_table.item(row, 0)
             if addr_item is None:
@@ -183,7 +185,10 @@ class SymbolsPage(QWidget):
             symbol = self._catalog.memory_by_address.get(int(address)) if address is not None else None
             if symbol is None:
                 continue
-            value, raw = symbol_value_texts(symbol, snapshot)
+            if live:
+                value, raw = symbol_value_texts(symbol, snapshot)
+            else:
+                value, raw = "—", "—"
             self._set_watch_cell(row, 2, value, address)
             self._set_watch_cell(row, 3, raw, address)
 

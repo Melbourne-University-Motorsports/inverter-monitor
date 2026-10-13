@@ -2,7 +2,7 @@
 type: CAN Parameter Reference
 title: Parameter messages 0x0C1/0x0C2 and address map
 description: Read/write parameter wire format, command parameters, and the EEPROM parameter map. Write path is documented, not implemented.
-tags: [can, parameters, eeprom, relays, pm100dx]
+tags: [can, parameters, eeprom, relays, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

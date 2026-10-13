@@ -2,7 +2,7 @@
 type: Serial Protocol Reference
 title: SCI RS232 broadcast (data acquisition)
 description: 57600 8N1 20-word hex broadcast and column map. Listen-only; the monitor never configures it.
-tags: [serial, sci, rs232, telemetry, pm100dx]
+tags: [serial, sci, rs232, telemetry, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

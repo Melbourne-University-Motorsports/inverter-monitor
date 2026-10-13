@@ -2,7 +2,7 @@
 type: CAN Signal Reference
 title: Internal states message 0x0AA (M170)
 description: Authoritative byte/bit map of the M170 internal-states broadcast, resolving the VSM bit-position conflict.
-tags: [can, m170, vsm, relays, limits, pm100dx]
+tags: [can, m170, vsm, relays, limits, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

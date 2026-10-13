@@ -2,7 +2,7 @@
 type: CAN Feature Reference
 title: Special CAN modes (OBD2, BMS, slave, rolling counter, diagnostics)
 description: Optional bus features outside the core broadcast/command/parameter set.
-tags: [can, obd2, bms, slave, rolling-counter, diagnostics, pm100dx]
+tags: [can, obd2, bms, slave, rolling-counter, diagnostics, pm100]
 status: stable
 generated: { by: cursor-agent/muse-spark-1.3, at: 2026-09-17T00:00:00Z }
 sources:

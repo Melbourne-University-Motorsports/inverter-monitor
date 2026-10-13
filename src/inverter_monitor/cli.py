@@ -13,7 +13,7 @@ from inverter_monitor.ui.theme import apply_theme
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Read-only PM100DX inverter monitor")
+    parser = argparse.ArgumentParser(description="PM100 inverter monitor and configuration tool")
     source = parser.add_mutually_exclusive_group()
     source.add_argument(
         "--serial",
