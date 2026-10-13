@@ -8,6 +8,16 @@ Cross-platform (macOS, Linux, Windows), built with PySide6 and pyqtgraph.
 
 ---
 
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Quick Start](#quick-start)
+- [RS232 Protocol Documentation](docs/rms-gui-memory-view.md)
+- [Command Line Options](#command-line-options)
+- [Safety & Write Contract](#safety--write-contract)
+- [Repository Structure & Reference Data](#repository-structure--reference-data)
+
+---
+
 ## Features
 
 - **RS232 Memory View Protocol**:
